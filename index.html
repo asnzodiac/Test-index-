@@ -270,7 +270,7 @@
         });
       });
 
-      return { yesterday, today, tomorrow, flights: groupedFlights };
+      return groupedFlights; // Return only the grouped arrays
     };
 
     const loadFlights = async (type) => {
@@ -284,10 +284,10 @@
         const tbody = document.querySelector(`#${type}-table tbody`);
         tbody.innerHTML = "";
 
-        const { yesterday, today, tomorrow, flights: groupedFlights } = filterAndSortFlights(flights, type);
+        const groupedFlights = filterAndSortFlights(flights, type);
 
         // Check if any flights are present
-        if (flights.yesterday.length === 0 && flights.today.length === 0 && flights.tomorrow.length === 0) {
+        if (groupedFlights.yesterday.length === 0 && groupedFlights.today.length === 0 && groupedFlights.tomorrow.length === 0) {
           const row = document.createElement("tr");
           row.innerHTML = `<td colspan="7" class="error-message">No qualifying ${type} found. Check console for details.</td>`;
           tbody.appendChild(row);
@@ -328,9 +328,9 @@
           }
         };
 
-        addFlights(yesterday, "Yesterday", yesterday);
-        addFlights(today, "Today", today);
-        addFlights(tomorrow, "Tomorrow", tomorrow);
+        addFlights(groupedFlights.yesterday, "Yesterday", new Date(new Date().setDate(new Date().getDate() - 1)));
+        addFlights(groupedFlights.today, "Today", new Date());
+        addFlights(groupedFlights.tomorrow, "Tomorrow", new Date(new Date().setDate(new Date().getDate() + 1)));
       } catch (err) {
         console.error(`Error loading ${type}:`, err);
         const tbody = document.querySelector(`#${type}-table tbody`);
