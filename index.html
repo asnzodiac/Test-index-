@@ -213,9 +213,9 @@
         // Apply airline filter
         const isValidAirline = filterValue === "IX"
           ? fn.startsWith("IX")
-          : filterValue === "IXAI"
-            ? fn.startsWith("IX") || fn.startsWith("AI")
-            : fn.startsWith("IX") || ["AI", "AK", "FD", "UL", "FZ", "J9"].includes(airlineCode);
+          : filterValue === "IX"
+            ? fn.startsWith("IX") || fn.startsWith("IX")
+            : fn.startsWith("IX") || ["AK", "FD", "UL", "FZ", "J9"].includes(airlineCode);
 
         // Check if flight is airborne or recently landed/departed
         if (isDep) {
