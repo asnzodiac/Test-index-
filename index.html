@@ -173,19 +173,12 @@
     };
 
     const getLogoURL = (flightNumber) => {
-      if (flightNumber.startsWith("IX")) {
-        return "https://cdn.brandfetch.io/idM6IAvrlf/w/820/h/248/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
-      } else if (flightNumber.startsWith("AI")) {
-        return "https://cdn.brandfetch.io/id-PSmaCm4/w/800/h/284/theme/light/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
-      } else if (flightNumber.startsWith("UL")) {
-        return "https://cdn.brandfetch.io/idZQkqhbVi/w/800/h/578/theme/dark/symbol.png?c=1dxbfHSJFAPEGdCLU4o5B";
-      } else if (flightNumber.startsWith("AK") || flightNumber.startsWith("FD")) {
-        return "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/AirAsia_New_Logo_%282020%29.svg/768px-AirAsia_New_Logo_%282020%29.svg.png";
-      } else if (flightNumber.startsWith("FZ")) {
-        return "https://cdn.brandfetch.io/idzRsGDSFE/w/800/h/162/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
-      } else if (flightNumber.startsWith("J9")) {
-        return "https://cdn.brandfetch.io/idRWbgTyu0/w/800/h/248/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
-      }
+      if (flightNumber.startsWith("IX")) return "https://cdn.brandfetch.io/idM6IAvrlf/w/820/h/248/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
+      if (flightNumber.startsWith("AI")) return "https://cdn.brandfetch.io/id-PSmaCm4/w/800/h/284/theme/light/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
+      if (flightNumber.startsWith("UL")) return "https://cdn.brandfetch.io/idZQkqhbVi/w/800/h/578/theme/dark/symbol.png?c=1dxbfHSJFAPEGdCLU4o5B";
+      if (flightNumber.startsWith("AK") || flightNumber.startsWith("FD")) return "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/AirAsia_New_Logo_%282020%29.svg/768px-AirAsia_New_Logo_%282020%29.svg.png";
+      if (flightNumber.startsWith("FZ")) return "https://cdn.brandfetch.io/idzRsGDSFE/w/800/h/162/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
+      if (flightNumber.startsWith("J9")) return "https://cdn.brandfetch.io/idRWbgTyu0/w/800/h/248/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
       return "";
     };
 
@@ -193,14 +186,10 @@
       const filterValue = document.getElementById("airlineFilter").value;
       const sortOption = document.getElementById("sortOption").value;
       const now = Math.floor(Date.now() / 1000);
-      const oneHour = 3600; // 1 hour in seconds
-      const halfHour = 1800; // 30 minutes in seconds
+      const pastWindow = 36000;
+      const oneHour = 3600;
+      const halfHour = 1800;
 
-      // Log unique status texts for debugging
-      const uniqueStatuses = [...new Set(flights.map(f => f.flight?.status?.text || "Unknown"))];
-      console.log(`Unique status texts for ${type}:`, uniqueStatuses);
-
-      // Filter flights
       const filteredFlights = flights.filter(f => {
         const fn = f.flight?.identification?.number?.default || "";
         const airlineCode = fn.substring(0, 2);
@@ -208,28 +197,34 @@
         const est = isDep ? f.flight.time.estimated?.departure : f.flight.time.estimated?.arrival;
         const sch = isDep ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival;
         const act = isDep ? f.flight.time.actual?.departure : f.flight.time.actual?.arrival;
-        const status = f.flight.status?.text || "";
+        const status = (f.flight.status?.text || "").toLowerCase();
 
-        // Apply airline filter
+        const timeRef = est || sch || act || now;
+        const isWithinPast10h = timeRef >= (now - pastWindow);
+
         const isValidAirline = filterValue === "IX"
           ? fn.startsWith("IX")
-          : filterValue === "IX"
-            ? fn.startsWith("IX") || fn.startsWith("IX")
+          : filterValue === "IXAI"
+            ? fn.startsWith("IX") || fn.startsWith("AI")
             : fn.startsWith("IX") || ["AK", "FD", "UL", "FZ", "J9"].includes(airlineCode);
 
-        // Check if flight is airborne or recently landed/departed
-        if (isDep) {
-          const hasDepartedRecently = act && status.toLowerCase() === "departed" && (now - act) <= halfHour;
-          const notYetDeparted = !act || act > now;
-          return isValidAirline && (hasDepartedRecently || notYetDeparted);
-        } else {
-          const hasLandedRecently = act && status.toLowerCase() === "landed" && (now - act) <= oneHour;
-          const notYetLanded = !act || act > now;
-          return isValidAirline && (hasLandedRecently || notYetLanded);
+        if (!isValidAirline || !isWithinPast10h) return false;
+
+        if (!isDep) {
+          if (status === "landed" && act && (now - act <= oneHour)) return true;
+          if (status !== "landed") return true;
+          return false;
         }
+
+        if (isDep) {
+          if (status === "departed" && act && (now - act <= halfHour)) return true;
+          if (status !== "departed") return true;
+          return false;
+        }
+
+        return false;
       });
 
-      // Group flights by date (yesterday, today, tomorrow) based on ETA/ETD
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const yesterday = new Date(today);
@@ -237,28 +232,20 @@
       const tomorrow = new Date(today);
       tomorrow.setDate(today.getDate() + 1);
 
-      const groupedFlights = {
-        yesterday: [],
-        today: [],
-        tomorrow: []
-      };
+      const groupedFlights = { yesterday: [], today: [], tomorrow: [] };
 
       filteredFlights.forEach(f => {
         const est = type === "departures" ? f.flight.time.estimated?.departure : f.flight.time.estimated?.arrival;
-        const flightTime = est || (type === "departures" ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival) || now;
+        const sch = type === "departures" ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival;
+        const flightTime = est || sch || now;
         const flightDate = new Date(flightTime * 1000);
         flightDate.setHours(0, 0, 0, 0);
 
-        if (flightDate.getTime() === yesterday.getTime()) {
-          groupedFlights.yesterday.push(f);
-        } else if (flightDate.getTime() === today.getTime()) {
-          groupedFlights.today.push(f);
-        } else if (flightDate.getTime() === tomorrow.getTime()) {
-          groupedFlights.tomorrow.push(f);
-        }
+        if (flightDate.getTime() === yesterday.getTime()) groupedFlights.yesterday.push(f);
+        else if (flightDate.getTime() === today.getTime()) groupedFlights.today.push(f);
+        else if (flightDate.getTime() === tomorrow.getTime()) groupedFlights.tomorrow.push(f);
       });
 
-      // Sort each group by ETA/ETD or STA/STD
       Object.keys(groupedFlights).forEach(key => {
         groupedFlights[key].sort((a, b) => {
           const getTime = f => {
@@ -270,15 +257,13 @@
         });
       });
 
-      return groupedFlights; // Return only the grouped arrays
+      return groupedFlights;
     };
 
     const loadFlights = async (type) => {
       try {
         const res = await fetch(getEndpoint(type));
-        if (!res.ok) {
-          throw new Error(`HTTP error! Status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
         const data = await res.json();
         const flights = data.result?.response?.airport?.pluginData?.schedule?.[type]?.data || [];
         const tbody = document.querySelector(`#${type}-table tbody`);
@@ -286,19 +271,17 @@
 
         const groupedFlights = filterAndSortFlights(flights, type);
 
-        // Check if any flights are present
         if (groupedFlights.yesterday.length === 0 && groupedFlights.today.length === 0 && groupedFlights.tomorrow.length === 0) {
           const row = document.createElement("tr");
-          row.innerHTML = `<td colspan="7" class="error-message">No qualifying ${type} found. Check console for details.</td>`;
+          row.innerHTML = `<td colspan="7" class="error-message">No qualifying ${type} found.</td>`;
           tbody.appendChild(row);
           return;
         }
 
-        // Add flights with date separators
         const addFlights = (flights, dateLabel, date) => {
           if (flights.length > 0) {
             const separator = document.createElement("tr");
-            separator.innerHTML = `<td colspan="7" class="date-separator">${dateLabel} - ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>`;
+            separator.innerHTML = `<td colspan="7" class="date-separator">${dateLabel} - ${date.toLocaleDateString()}</td>`;
             tbody.appendChild(separator);
 
             flights.forEach(f => {
@@ -388,9 +371,7 @@
         installBtn.remove();
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then(choice => {
-          if (choice.outcome === 'accepted') {
-            console.log("App installed");
-          }
+          if (choice.outcome === 'accepted') console.log("App installed");
           deferredPrompt = null;
         });
       };
