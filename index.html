@@ -16,6 +16,7 @@
       --border-color: #cccccc;
       --control-bg: #ffffff;
       --control-text: #000000;
+      --separator-bg: #e0e0e0;
     }
 
     [data-theme="dark"] {
@@ -27,6 +28,7 @@
       --border-color: #555555;
       --control-bg: #333333;
       --control-text: #ffffff;
+      --separator-bg: #333333;
     }
 
     body {
@@ -78,6 +80,13 @@
     .status-green { color: green; font-weight: bold; }
     .status-orange { color: orange; font-weight: bold; }
     .status-red { color: red; font-weight: bold; }
+    .error-message { color: red; font-style: italic; }
+    .date-separator {
+      background-color: var(--separator-bg);
+      font-weight: bold;
+      text-align: left;
+      padding-left: 15px;
+    }
 
     .flight-logo {
       height: 16px;
@@ -185,14 +194,14 @@
       const sortOption = document.getElementById("sortOption").value;
       const now = Math.floor(Date.now() / 1000);
       const oneHour = 3600; // 1 hour in seconds
+      const halfHour = 1800; // 30 minutes in seconds
 
-      // Log unique status texts for arrivals to inspect API values
-      if (type === "arrivals") {
-        const uniqueStatuses = [...new Set(flights.map(f => f.flight?.status?.text || "Unknown"))];
-        console.log("Unique status texts for arrivals:", uniqueStatuses);
-      }
+      // Log unique status texts for debugging
+      const uniqueStatuses = [...new Set(flights.map(f => f.flight?.status?.text || "Unknown"))];
+      console.log(`Unique status texts for ${type}:`, uniqueStatuses);
 
-      return flights.filter(f => {
+      // Filter flights
+      const filteredFlights = flights.filter(f => {
         const fn = f.flight?.identification?.number?.default || "";
         const airlineCode = fn.substring(0, 2);
         const isDep = type === "departures";
@@ -200,7 +209,6 @@
         const sch = isDep ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival;
         const act = isDep ? f.flight.time.actual?.departure : f.flight.time.actual?.arrival;
         const status = f.flight.status?.text || "";
-        const destination = f.flight.airport?.destination?.code?.iata || "";
 
         // Apply airline filter
         const isValidAirline = filterValue === "IX"
@@ -209,67 +217,124 @@
             ? fn.startsWith("IX") || fn.startsWith("AI")
             : fn.startsWith("IX") || ["AI", "AK", "FD", "UL", "FZ", "J9"].includes(airlineCode);
 
+        // Check if flight is airborne or recently landed/departed
         if (isDep) {
-          // For departures, use existing logic (flights for today that haven't occurred)
-          const flightTime = est || sch;
-          const flightDate = new Date((flightTime || now) * 1000);
-          const today = new Date();
-          const isToday = flightDate.toDateString() === today.toDateString();
-          return isValidAirline && isToday && (!act || act > now);
+          const hasDepartedRecently = act && status.toLowerCase() === "departed" && (now - act) <= halfHour;
+          const notYetDeparted = !act || act > now;
+          return isValidAirline && (hasDepartedRecently || notYetDeparted);
         } else {
-          // For arrivals, show flights destined for COK that are airborne or landed within 1 hour
-          const isDestCOK = destination === "COK";
-          // Consider flight airborne if departed but not landed, or status indicates "En-route" or "Airborne"
-          const isAirborne = (f.flight.time.actual?.departure && !f.flight.time.actual?.arrival) ||
-            status.toLowerCase().includes("en-route") || status.toLowerCase().includes("airborne");
           const hasLandedRecently = act && status.toLowerCase() === "landed" && (now - act) <= oneHour;
-          return isValidAirline && isDestCOK && (isAirborne || hasLandedRecently);
+          const notYetLanded = !act || act > now;
+          return isValidAirline && (hasLandedRecently || notYetLanded);
         }
-      }).sort((a, b) => {
-        const getTime = f => {
-          return sortOption === "estimated"
-            ? (type === "departures" ? f.flight.time.estimated?.departure : f.flight.time.estimated?.arrival) || 0
-            : (type === "departures" ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival) || 0;
-        };
-        return getTime(a) - getTime(b);
       });
+
+      // Group flights by date (yesterday, today, tomorrow) based on ETA/ETD
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const groupedFlights = {
+        yesterday: [],
+        today: [],
+        tomorrow: []
+      };
+
+      filteredFlights.forEach(f => {
+        const est = type === "departures" ? f.flight.time.estimated?.departure : f.flight.time.estimated?.arrival;
+        const flightTime = est || (type === "departures" ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival) || now;
+        const flightDate = new Date(flightTime * 1000);
+        flightDate.setHours(0, 0, 0, 0);
+
+        if (flightDate.getTime() === yesterday.getTime()) {
+          groupedFlights.yesterday.push(f);
+        } else if (flightDate.getTime() === today.getTime()) {
+          groupedFlights.today.push(f);
+        } else if (flightDate.getTime() === tomorrow.getTime()) {
+          groupedFlights.tomorrow.push(f);
+        }
+      });
+
+      // Sort each group by ETA/ETD or STA/STD
+      Object.keys(groupedFlights).forEach(key => {
+        groupedFlights[key].sort((a, b) => {
+          const getTime = f => {
+            return sortOption === "estimated"
+              ? (type === "departures" ? f.flight.time.estimated?.departure : f.flight.time.estimated?.arrival) || 0
+              : (type === "departures" ? f.flight.time.scheduled?.departure : f.flight.time.scheduled?.arrival) || 0;
+          };
+          return getTime(a) - getTime(b);
+        });
+      });
+
+      return { yesterday, today, tomorrow, flights: groupedFlights };
     };
 
     const loadFlights = async (type) => {
       try {
         const res = await fetch(getEndpoint(type));
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`);
+        }
         const data = await res.json();
-        const flights = data.result.response.airport.pluginData.schedule[type].data || [];
+        const flights = data.result?.response?.airport?.pluginData?.schedule?.[type]?.data || [];
         const tbody = document.querySelector(`#${type}-table tbody`);
         tbody.innerHTML = "";
 
-        const filteredFlights = filterAndSortFlights(flights, type);
-        filteredFlights.forEach(f => {
-          const fl = f.flight;
-          const isDep = type === "departures";
-          const est = isDep ? fl.time.estimated?.departure : fl.time.estimated?.arrival;
-          const sch = isDep ? fl.time.scheduled?.departure : fl.time.scheduled?.arrival;
-          const fn = fl.identification.number?.default || "-";
-          const logo = getLogoURL(fn);
-          const reg = fl.aircraft?.registration || "-";
-          const airportCode = isDep ? fl.airport.destination?.code?.iata : fl.airport.origin?.code?.iata || "-";
-          const model = fl.aircraft?.model?.text || "-";
-          const status = fl.status?.text || "-";
+        const { yesterday, today, tomorrow, flights: groupedFlights } = filterAndSortFlights(flights, type);
 
+        // Check if any flights are present
+        if (flights.yesterday.length === 0 && flights.today.length === 0 && flights.tomorrow.length === 0) {
           const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><img class="flight-logo" src="${logo}" alt="logo"> ${fn}</td>
-            <td>${reg}</td>
-            <td>${airportCode}</td>
-            <td>${toLocalTime(est)}</td>
-            <td>${toLocalTime(sch)}</td>
-            <td>${model}</td>
-            <td class="${classifyStatus(est, sch)}">${status}</td>
-          `;
+          row.innerHTML = `<td colspan="7" class="error-message">No qualifying ${type} found. Check console for details.</td>`;
           tbody.appendChild(row);
-        });
+          return;
+        }
+
+        // Add flights with date separators
+        const addFlights = (flights, dateLabel, date) => {
+          if (flights.length > 0) {
+            const separator = document.createElement("tr");
+            separator.innerHTML = `<td colspan="7" class="date-separator">${dateLabel} - ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td>`;
+            tbody.appendChild(separator);
+
+            flights.forEach(f => {
+              const fl = f.flight;
+              const isDep = type === "departures";
+              const est = isDep ? fl.time.estimated?.departure : fl.time.estimated?.arrival;
+              const sch = isDep ? fl.time.scheduled?.departure : fl.time.scheduled?.arrival;
+              const fn = fl.identification.number?.default || "-";
+              const logo = getLogoURL(fn);
+              const reg = fl.aircraft?.registration || "-";
+              const airportCode = isDep ? fl.airport.destination?.code?.iata : fl.airport.origin?.code?.iata || "-";
+              const model = fl.aircraft?.model?.text || "-";
+              const status = fl.status?.text || "-";
+
+              const row = document.createElement("tr");
+              row.innerHTML = `
+                <td><img class="flight-logo" src="${logo}" alt="logo"> ${fn}</td>
+                <td>${reg}</td>
+                <td>${airportCode}</td>
+                <td>${toLocalTime(est)}</td>
+                <td>${toLocalTime(sch)}</td>
+                <td>${model}</td>
+                <td class="${classifyStatus(est, sch)}">${status}</td>
+              `;
+              tbody.appendChild(row);
+            });
+          }
+        };
+
+        addFlights(yesterday, "Yesterday", yesterday);
+        addFlights(today, "Today", today);
+        addFlights(tomorrow, "Tomorrow", tomorrow);
       } catch (err) {
         console.error(`Error loading ${type}:`, err);
+        const tbody = document.querySelector(`#${type}-table tbody`);
+        tbody.innerHTML = `<tr><td colspan="7" class="error-message">Error loading ${type}: ${err.message}</td></tr>`;
       }
     };
 
