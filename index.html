@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIX Security – BOM</title>
+
+<style>
+:root {
+  --bg:#fff; --text:#000; --hdr:#eee; --th:#333; --tht:#fff;
+}
+[data-theme="dark"] {
+  --bg:#121212; --text:#fff; --hdr:#1f1f1f; --th:#2c2c2c; --tht:#fff;
+}
+body {
+  background:var(--bg); color:var(--text);
+  font-family:Arial; margin:15px;
+}
+h2 { background:var(--hdr); padding:8px; }
+table { width:100%; border-collapse:collapse; margin-bottom:30px; }
+th,td { border:1px solid #666; padding:6px; text-align:center; }
+th { background:var(--th); color:var(--tht); }
+.controls { display:flex; justify-content:space-between; margin-bottom:10px; }
+button { padding:6px 10px; }
+.flight-logo { height:16px; vertical-align:middle; margin-right:4px; }
+</style>
+</head>
+
+<body>
+
+<div class="controls">
+  <button id="loadEarlierBtn">Load Earlier Flights</button>
+  <button id="themeToggle">Dark Mode</button>
+</div>
+
+<h2>Arrivals – BOM</h2>
+<table id="arrivals-table">
+<thead>
+<tr><th>Flight</th><th>Reg</th><th>From</th><th>ETA</th><th>STA</th><th>Aircraft</th><th>Status</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<h2>Departures – BOM</h2>
+<table id="departures-table">
+<thead>
+<tr><th>Flight</th><th>Reg</th><th>To</th><th>ETD</th><th>STD</th><th>Aircraft</th><th>Status</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<script>
+/* ================= CONFIG ================= */
+const AIRPORT = "bom";
+const baseUrl = `https://api.flightradar24.com/common/v1/airport.json?code=${AIRPORT}`;
+let baseTimestamp = Math.floor(Date.now()/1000);
+let loadedTimestamps = new Set();
+
+/* ================= HELPERS ================= */
+const getEndpoint = (type, ts) =>
+ `${baseUrl}&plugin-setting[schedule][mode]=${type}&plugin-setting[schedule][timestamp]=${ts}&limit=100`;
+
+const toTime = t => t ? new Date(t*1000).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",hour12:false}) : "-";
+
+const airlineAllowed = fn =>
+ ["IX","UL","J9","VZ","UR","3U","7L"].some(a=>fn.startsWith(a));
+
+const getLogo = fn => {
+ if(fn.startsWith("IX")) return "https://cdn.brandfetch.io/idM6IAvrlf/w/400/h/120/logo.png";
+ if(fn.startsWith("UL")) return "https://cdn.brandfetch.io/idZQkqhbVi/w/200/h/200/logo.png";
+ if(fn.startsWith("J9")) return "https://cdn.brandfetch.io/idRWbgTyu0/w/400/h/120/logo.png";
+ if(fn.startsWith("VZ")) return "https://cdn.brandfetch.io/idCqvZFzLY/logo.svg";
+ if(fn.startsWith("UR")) return "https://cdn.brandfetch.io/idXCBJur5Y/logo.svg";
+ if(fn.startsWith("3U")) return "https://cdn.brandfetch.io/id6TS9zs77/w/200/h/60/logo.png";
+ if(fn.startsWith("7L")) return "https://cdn.brandfetch.io/idGAbbgSVh/w/300/h/120/logo.png";
+ return "";
+};
+
+/* ================= CORE FILTER ================= */
+const withinTimeWindow = (sch, est, act) => {
+ const now = Math.floor(Date.now()/1000);
+ const oneHr = 3600;
+ const twentyHr = now + 20*3600;
+ const t = sch || est || 0;
+
+ const inWindow = t >= now-oneHr && t <= twentyHr;
+ const delayed = sch && now>sch && (!act || act>now) && est>now;
+ const completed = act && act >= now-oneHr;
+
+ return inWindow || delayed || completed;
+};
+
+/* ================= LOAD ================= */
+async function loadFlights(type, ts, append=true) {
+ if(loadedTimestamps.has(type+ts)) return;
+ loadedTimestamps.add(type+ts);
+
+ const res = await fetch(getEndpoint(type, ts));
+ const data = await res.json();
+ const flights = data?.result?.response?.airport?.pluginData?.schedule?.[type]?.data || [];
+ const tbody = document.querySelector(`#${type}-table tbody`);
+ if(!append) tbody.innerHTML="";
+
+ flights.forEach(f=>{
+  const fl=f.flight;
+  const fn=fl?.identification?.number?.default||"";
+  if(!airlineAllowed(fn)) return;
+
+  const isDep = type==="departures";
+  const sch = isDep?fl.time.scheduled?.departure:fl.time.scheduled?.arrival;
+  const est = isDep?fl.time.estimated?.departure:fl.time.estimated?.arrival;
+  const act = isDep?fl.time.actual?.departure:fl.time.actual?.arrival;
+
+  if(!withinTimeWindow(sch,est,act)) return;
+
+  const tr=document.createElement("tr");
+  tr.innerHTML=`
+   <td><img class="flight-logo" src="${getLogo(fn)}">${fn}</td>
+   <td>${fl.aircraft?.registration||"-"}</td>
+   <td>${isDep?fl.airport.destination?.code?.iata:fl.airport.origin?.code?.iata||"-"}</td>
+   <td>${toTime(est)}</td>
+   <td>${toTime(sch)}</td>
+   <td>${fl.aircraft?.model?.text||"-"}</td>
+   <td>${fl.status?.text||"-"}</td>`;
+  tbody.appendChild(tr);
+ });
+}
+
+/* ================= AUTO FUTURE LOADER ================= */
+async function loadInitialWindow() {
+ for(let i=-1;i<=4;i++) {
+  const ts = baseTimestamp + i*6*3600;
+  await Promise.all([
+    loadFlights("arrivals",ts),
+    loadFlights("departures",ts)
+  ]);
+ }
+}
+
+/* ================= CONTROLS ================= */
+document.getElementById("loadEarlierBtn").onclick = async ()=>{
+ baseTimestamp -= 6*3600;
+ await loadFlights("arrivals",baseTimestamp);
+ await loadFlights("departures",baseTimestamp);
+};
+
+document.getElementById("themeToggle").onclick = ()=>{
+ document.documentElement.dataset.theme =
+  document.documentElement.dataset.theme==="dark"?"light":"dark";
+};
+
+/* ================= START ================= */
+loadInitialWindow();
+setInterval(()=>loadInitialWindow(),30000);
+</script>
+
+</body>
+</html>
