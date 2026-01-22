@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIX SEC OPS - Aswin BOM</title>
+  <meta name="theme-color" content="#000000" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --header-bg: #f0f0f0;
+      --table-header-bg: #333333;
+      --table-header-text: #ffffff;
+      --border-color: #cccccc;
+      --control-bg: #ffffff;
+      --control-text: #000000;
+      --delayed-row-bg: #fff0f0;
+      --completed-row-bg: #f0fff0;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1a1a1a;
+      --text-color: #ffffff;
+      --header-bg: #2a2a2a;
+      --table-header-bg: #444444;
+      --table-header-text: #ffffff;
+      --border-color: #555555;
+      --control-bg: #333333;
+      --control-text: #ffffff;
+      --delayed-row-bg: #3a2a2a;
+      --completed-row-bg: #2a3a2a;
+    }
+
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: var(--bg-color); color: var(--text-color); }
+    h2 { background: var(--header-bg); padding: 10px; }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .controls-left, .controls-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    select, button {
+      padding: 5px;
+      background-color: var(--control-bg);
+      color: var(--control-text);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+    th, td { border: 1px solid var(--border-color); padding: 8px; text-align: center; }
+    th { background-color: var(--table-header-bg); color: var(--table-header-text); }
+
+    .status-green { color: green; font-weight: bold; }
+    .status-orange { color: orange; font-weight: bold; }
+    .status-red { color: red; font-weight: bold; }
+
+    .delayed-row { background-color: var(--delayed-row-bg); }
+    .completed-row { background-color: var(--completed-row-bg); }
+
+    .flight-logo {
+      height: 16px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="controls">
+  <div class="controls-left">
+    <button id="loadEarlierBtn">Load Earlier Flights</button>
+    <span id="loadingIndicator" style="display:none;">Loading...</span>
+  </div>
+</div>
+
+<h2>Arrivals - AIX Security-BOM</h2>
+<table id="arrivals-table">
+  <thead>
+    <tr>
+      <th>Flight No</th>
+      <th>Registration</th>
+      <th>From</th>
+      <th>ETA</th>
+      <th>STA</th>
+      <th>Aircraft</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h2>Departures - AIX Security-BOM</h2>
+<table id="departures-table">
+  <thead>
+    <tr>
+      <th>Flight No</th>
+      <th>Registration</th>
+      <th>To</th>
+      <th>ETD</th>
+      <th>STD</th>
+      <th>Aircraft</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+  /* STATION CHANGED */
+  const baseUrl = "https://api.flightradar24.com/common/v1/airport.json?code=bom";
+
+  let historicalFlights = { arrivals: new Set(), departures: new Set() };
+  let currentTimestamp = Math.floor(Date.now() / 1000);
+
+  const getEndpoint = (type, page = 1, timestamp = null) =>
+    `${baseUrl}&plugin-setting[schedule][mode]=${type}&plugin-setting[schedule][timestamp]=${timestamp || Math.floor(Date.now()/1000)}&page=${page}&limit=100`;
+
+  const toLocalTime = ts =>
+    ts ? new Date(ts * 1000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }) : "-";
+
+  const classifyStatus = (est, sch) => {
+    if (!est || !sch) return "status-green";
+    const d = est - sch;
+    return d <= 0 ? "status-green" : d <= 900 ? "status-orange" : "status-red";
+  };
+
+  /* LOGOS UPDATED */
+  const getLogoURL = fn => {
+    if (fn.startsWith("IX")) return "https://cdn.brandfetch.io/idM6IAvrlf/w/820/h/248/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
+    if (fn.startsWith("UL")) return "https://cdn.brandfetch.io/idZQkqhbVi/w/800/h/578/theme/dark/symbol.png?c=1dxbfHSJFAPEGdCLU4o5B";
+    if (fn.startsWith("J9")) return "https://cdn.brandfetch.io/idRWbgTyu0/w/800/h/248/theme/dark/logo.png?c=1dxbfHSJFAPEGdCLU4o5B";
+    if (fn.startsWith("VZ")) return "https://cdn.brandfetch.io/idCqvZFzLY/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1668080220795";
+    if (fn.startsWith("UR")) return "https://cdn.brandfetch.io/idXCBJur5Y/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1668080299531";
+    if (fn.startsWith("3U")) return "https://cdn.brandfetch.io/id6TS9zs77/w/196/h/48/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1668079487379";
+    if (fn.startsWith("7L")) return "https://cdn.brandfetch.io/idGAbbgSVh/w/820/h/313/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1764523304698";
+    return "";
+  };
+
+  /* ONLY IX FILTER CHANGED */
+  const airlineAllowed = fn =>
+    fn.startsWith("IX") || fn.startsWith("UL") || fn.startsWith("J9") ||
+    fn.startsWith("VZ") || fn.startsWith("UR") || fn.startsWith("3U") || fn.startsWith("7L");
+
+  const loadFlights = async type => {
+    const res = await fetch(getEndpoint(type));
+    const data = await res.json();
+    const flights = data.result.response.airport.pluginData.schedule[type].data;
+    const tbody = document.querySelector(`#${type}-table tbody`);
+    tbody.innerHTML = "";
+
+    flights.forEach(f => {
+      const fl = f.flight;
+      const fn = fl.identification?.number?.default || "";
+      if (!airlineAllowed(fn)) return;
+
+      const isDep = type === "departures";
+      const est = isDep ? fl.time.estimated?.departure : fl.time.estimated?.arrival;
+      const sch = isDep ? fl.time.scheduled?.departure : fl.time.scheduled?.arrival;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><img class="flight-logo" src="${getLogoURL(fn)}"> ${fn}</td>
+        <td>${fl.aircraft?.registration || "-"}</td>
+        <td>${isDep ? fl.airport.destination?.code?.iata : fl.airport.origin?.code?.iata}</td>
+        <td>${toLocalTime(est)}</td>
+        <td>${toLocalTime(sch)}</td>
+        <td>${fl.aircraft?.model?.text || "-"}</td>
+        <td class="${classifyStatus(est, sch)}">${fl.status?.text || "-"}</td>`;
+      tbody.appendChild(row);
+    });
+  };
+
+  loadFlights("arrivals");
+  loadFlights("departures");
+  setInterval(() => {
+    loadFlights("arrivals");
+    loadFlights("departures");
+  }, 30000);
+</script>
+
+</body>
+</html>
