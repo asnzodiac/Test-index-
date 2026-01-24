@@ -1,33 +1,48 @@
-```javascript
-const CACHE_NAME = "aix-flight-cache-v1";
-const urlsToCache = [
+const CACHE_NAME = "aix-sec-pwa-v3";
+const STATIC_ASSETS = [
   "./",
   "./index.html",
-  "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./manifest.json"
 ];
 
-// Install event: Cache app shell
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
+// Install
+self.addEventListener("install", e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
   );
+  self.skipWaiting();
 });
 
-// Fetch event: Serve cached content if offline
-self.addEventListener("fetch", (event) => {
-  // Skip caching for API requests
-  if (event.request.url.includes("api.flightradar24.com")) {
-    event.respondWith(fetch(event.request));
+// Activate
+self.addEventListener("activate", e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+// Fetch
+self.addEventListener("fetch", e => {
+  const url = new URL(e.request.url);
+
+  // FlightRadar API – Network first
+  if (url.hostname.includes("flightradar24.com")) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(e.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
     return;
   }
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+
+  // Static assets – Cache first
+  e.respondWith(
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
-```
