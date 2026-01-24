@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,7 +103,7 @@ const withinTimeWindow = (type, sch, est, act) => {
   if (type === "arrivals") {
     completed = act && act >= now - 1200; // 20 min after landing
   } else { // departures
-    completed = act && act >= now - 600; // 10 min after departure
+    completed = act && act >= now - 300; // 5 min after departure (buffer for refresh)
   }
   return inWindow || delayed || completed;
 };
@@ -112,9 +113,9 @@ const cleanupFlights = (type, tbody) => {
   Array.from(tbody.rows).forEach(row => {
     const act = parseInt(row.dataset.act) || 0;
     if (type === "arrivals") {
-      if (act && act < now - 1200) row.remove(); // Remove 20+ min after landing
+      if (act && act < now - 1200) row.remove();
     } else { // departures
-      if (act && act < now - 600) row.remove(); // Remove 10+ min after departure
+      if (act && act < now) row.remove();
     }
   });
 };
