@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Work Hours Calculator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    max-width: 400px;
+  }
+  label {
+    display: block;
+    margin-top: 10px;
+  }
+  button {
+    margin-top: 15px;
+    padding: 8px 12px;
+  }
+  #result {
+    margin-top: 15px;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<h3>Work Hours Calculator</h3>
+
+<label>
+  Start Time:
+  <input type="time" id="startTime">
+</label>
+
+<label>
+  End Time:
+  <input type="time" id="endTime">
+</label>
+
+<button onclick="calculateHours()">Calculate</button>
+
+<div id="result"></div>
+
+<script>
+function calculateHours() {
+  const start = document.getElementById("startTime").value;
+  const end = document.getElementById("endTime").value;
+
+  if (!start || !end) {
+    document.getElementById("result").innerText = "Please select both times.";
+    return;
+  }
+
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+
+  let startMinutes = sh * 60 + sm;
+  let endMinutes = eh * 60 + em;
+
+  // If end time is next day
+  if (endMinutes < startMinutes) {
+    endMinutes += 24 * 60;
+  }
+
+  const diff = endMinutes - startMinutes;
+  const hours = Math.floor(diff / 60);
+  const minutes = diff % 60;
+
+  document.getElementById("result").innerText =
+    `Total time worked: ${hours} hour(s) ${minutes} minute(s)`;
+}
+</script>
+
+</body>
+</html>
