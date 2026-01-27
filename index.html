@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIX Security – BOM</title>
+<meta name="theme-color" content="#000000" />
+<link rel="manifest" href="manifest.json" />
+
+<style>
+:root {
+  --bg:#fff; --text:#000; --hdr:#eee; --th:#333; --tht:#fff;
+  --green:#c8f7c5; --yellow:#fff3b0; --red:#f7c5c5; --grey:#e0e0e0;
+}
+[data-theme="dark"] {
+  --bg:#121212; --text:#fff; --hdr:#1f1f1f; --th:#2c2c2c; --tht:#fff;
+  --green:#1f4d2b; --yellow:#5c4b00; --red:#5c1f1f; --grey:#333;
+}
+body { background:var(--bg); color:var(--text); font-family:Arial; margin:15px; }
+h2 { background:var(--hdr); padding:8px; }
+table { width:100%; border-collapse:collapse; margin-bottom:30px; }
+th,td { border:1px solid #666; padding:6px; text-align:center; }
+th { background:var(--th); color:var(--tht); position:sticky; top:0; z-index:2; }
+.controls { display:flex; justify-content:space-between; margin-bottom:10px; }
+button { padding:6px 10px; }
+.flight-logo { height:16px; vertical-align:middle; margin-right:4px; }
+.onTime { background:var(--green); }
+.delay { background:var(--yellow); }
+.heavyDelay { background:var(--red); }
+.cancelled { background:var(--grey); }
+</style>
+</head>
+
+<body>
+
+<div class="controls">
+  <!-- Removed loadEarlierBtn as historical data is not supported in the free API -->
+  <button id="themeToggle">Dark Mode</button>
+</div>
+
+<h2>Arrivals – BOM</h2>
+<table id="arrivals-table">
+<thead>
+<tr><th>Flight</th><th>Reg</th><th>From</th><th>ETA</th><th>STA</th><th>Aircraft</th><th>Status</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<h2>Departures – BOM</h2>
+<table id="departures-table">
+<thead>
+<tr><th>Flight</th><th>Reg</th><th>To</th><th>ETD</th><th>STD</th><th>Aircraft</th><th>Status</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<script>
+/* ================= CONFIG ================= */
+const AIRPORT = "BOM";
+const API_KEY = "cce70b26-a084-43fa-b46b-d3d7f9e648c0"; // Your Airlabs API key
+const AIRLINES = ["IX", "UL", "J9", "VZ", "UR", "3U", "7L"]; // Airline IATA codes
+const fetchHeaders = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" };
+
+/* ================= HELPERS ================= */
+const toTime = t => t ? new Date(t * 1000).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: false }) : "-";
+
+const getLogo = fn => {
+  const prefix = fn.replace(/\d+/, '');
+  switch (prefix) {
+    case "IX": return "https://www.airindiaexpress.com/themes/frontend/images/aix-logo.svg";
+    case "UL": return "https://www.srilankan.com/images/logos/srilankan-logo.svg";
+    case "J9": return "https://www.jazeeraairways.com/images/jazeera-logo-en.svg";
+    case "VZ": return "https://www.vietjetair.com/static/version1698651786/frontend/VietJetAir/en_US/images/logo.svg";
+    case "UR": return "https://ugandaairlines.com/wp-content/uploads/2020/07/uganda-airlines-logo.svg";
+    case "3U": return "https://www.sichuanair.com/sichuanair/resources/images/logo.svg";
+    case "7L": return "https://silkwaywest.com/wp-content/uploads/2020/06/logo.svg";
+    default: return "";
+  }
+};
+
+const delayMinutes = (sch, est) => sch && est ? Math.round((est - sch) / 60) : 0;
+
+const rowClass = (status, delay) => {
+  if (status?.toLowerCase()?.includes("cancel")) return "cancelled";
+  if (delay > 30) return "heavyDelay";
+  if (delay > 5) return "delay";
+  return "onTime";
+};
+
+const withinTimeWindow = (type, sch, est, act) => {
+  const now = Math.floor(Date.now() / 1000);
+  const oneHr = 3600;
+  const twentyHr = now + 20 * oneHr;
+  const t = sch || est || 0;
+  const inWindow = t >= now - oneHr && t <= twentyHr;
+  const delayed = sch && now > sch && (!act || act > now) && (est > now || !est);
+  let completed = false;
+  if (type === "arrivals") {
+    completed = act && act >= now - 1200; // 20 min after landing
+  } else { // departures
+    completed = act && act >= now - 300; // 5 min after departure
+  }
+  return inWindow || delayed || completed;
+};
+
+const cleanupFlights = (type, tbody) => {
+  const now = Math.floor(Date.now() / 1000);
+  Array.from(tbody.rows).forEach(row => {
+    const act = parseInt(row.dataset.act) || 0;
+    if (type === "arrivals") {
+      if (act && act < now - 1200) row.remove();
+    } else { // departures
+      if (act && act < now) row.remove();
+    }
+  });
+};
+
+const sortTable = (tableId) => {
+  const table = document.getElementById(tableId);
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  rows.sort((a, b) => (parseInt(a.dataset.sch) || 0) - (parseInt(b.dataset.sch) || 0));
+  rows.forEach(row => tbody.appendChild(row));
+};
+
+/* ================= LOAD ================= */
+async function loadFlights(type) {
+  const isDep = type === "departures";
+  const param = isDep ? "dep_iata" : "arr_iata";
+  const tbody = document.querySelector(`#${type}-table tbody`);
+  tbody.innerHTML = ""; // Clear and reload fresh data
+  let allFlights = [];
+
+  for (const airline of AIRLINES) {
+    const url = `https://airlabs.co/api/v9/schedules?${param}=${AIRPORT}&airline_iata=${airline}&api_key=${API_KEY}`;
+    const res = await fetch(url, { headers: fetchHeaders });
+    const data = await res.json();
+    const flights = data.response || [];
+    allFlights.push(...flights);
+  }
+
+  allFlights.forEach(f => {
+    const fn = f.flight_iata || "";
+    if (!fn) return;
+
+    const sch = isDep ? f.dep_time_ts : f.arr_time_ts;
+    const est = isDep ? (f.dep_estimated_ts || sch) : (f.arr_estimated_ts || sch);
+    const act = isDep ? f.dep_actual_ts : f.arr_actual_ts;
+    if (!withinTimeWindow(type, sch, est, act)) return;
+
+    const flightId = fn; // Unique ID
+    const existing = tbody.querySelector(`tr[data-flight-id="${flightId}"]`);
+    const dly = delayMinutes(sch, est);
+    const statusText = f.status || "-";
+    const className = rowClass(statusText, dly);
+
+    if (existing) {
+      // Update existing row for real-time changes
+      existing.cells[3].innerHTML = `${toTime(est)} ${dly > 0 ? `(+${dly})` : ""}`;
+      existing.cells[6].innerHTML = statusText;
+      existing.className = className;
+      existing.dataset.est = est || 0;
+      existing.dataset.act = act || 0;
+      return;
+    }
+
+    // Append new row
+    const tr = document.createElement("tr");
+    tr.dataset.flightId = flightId;
+    tr.dataset.sch = sch || 0;
+    tr.dataset.est = est || 0;
+    tr.dataset.act = act || 0;
+    tr.className = className;
+    tr.innerHTML = `
+      <td><img class="flight-logo" src="${getLogo(fn)}">${fn}</td>
+      <td>-</td> <!-- Registration not available in free plan -->
+      <td>${isDep ? (f.arr_iata || "-") : (f.dep_iata || "-")}</td>
+      <td>${toTime(est)} ${dly > 0 ? `(+${dly})` : ""}</td>
+      <td>${toTime(sch)}</td>
+      <td>-</td> <!-- Aircraft model not available in free plan -->
+      <td>${statusText}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  cleanupFlights(type, tbody);
+  sortTable(`${type}-table`);
+}
+
+/* ================= AUTO LOADER ================= */
+async function loadAllFlights() {
+  await Promise.all([
+    loadFlights("arrivals"),
+    loadFlights("departures")
+  ]);
+}
+
+/* ================= CONTROLS ================= */
+document.getElementById("themeToggle").onclick = () => {
+  document.documentElement.dataset.theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+};
+
+/* ================= START ================= */
+loadAllFlights();
+setInterval(loadAllFlights, 30000);
+</script>
+<script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(reg => console.log("SW registered", reg))
+          .catch(err => console.error("SW registration failed:", err));
+      });
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.createElement("button");
+      installBtn.textContent = "Install App";
+      installBtn.style = "position:fixed;bottom:10px;right:10px;z-index:1000;";
+      installBtn.onclick = () => {
+        installBtn.remove();
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(choice => {
+          if (choice.outcome === 'accepted') {
+            console.log("App installed");
+          }
+          deferredPrompt = null;
+        });
+      };
+      document.body.appendChild(installBtn);
+    });
+  </script>
+</body>
+</html>
