@@ -132,8 +132,11 @@ async function loadFlights(type) {
   let allFlights = [];
 
   for (const airline of AIRLINES) {
-    const url = `https://airlabs.co/api/v9/schedules?${param}=${AIRPORT}&airline_iata=${airline}&api_key=${API_KEY}`;
+    const url = `https://cors-anywhere.herokuapp.com/https://airlabs.co/api/v9/schedules?${param}=${AIRPORT}&airline_iata=${airline}&api_key=${API_KEY}`;
     const res = await fetch(url, { headers: fetchHeaders });
+    if (!res.ok) {
+      console.error(`API error for ${airline}: ${res.status} ${res.statusText}`);
+    }
     const data = await res.json();
     const flights = data.response || [];
     allFlights.push(...flights);
