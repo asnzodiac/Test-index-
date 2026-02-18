@@ -10,90 +10,235 @@
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
   <style>
-    :root {
-      --bg:#fff; --text:#000; --hdr:#eee; --th:#333; --tht:#fff;
-      --green:#c8f7c5; --yellow:#fff3b0; --red:#f7c5c5; --grey:#e0e0e0;
-      --border:#666;
-      --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    }
-    [data-theme="dark"] {
-      --bg:#121212; --text:#fff; --hdr:#1f1f1f; --th:#2c2c2c; --tht:#fff;
-      --green:#1f4d2b; --yellow:#5c4b00; --red:#5c1f1f; --grey:#333;
-      --border:#444;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px}
+:root{
+  --bg:#fff; --text:#000; --hdr:#eee; --th:#333; --tht:#fff;
+  --green:#c8f7c5; --yellow:#fff3b0; --red:#f7c5c5; --grey:#e0e0e0;
+  --border:#666;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#121212; --text:#fff; --hdr:#1f1f1f; --th:#2c2c2c; --tht:#fff;
+  --green:#1f4d2b; --yellow:#5c4b00; --red:#5c1f1f; --grey:#333;
+  --border:#444;
+}
 
-    .controls-bar{
-      display:flex;flex-wrap:wrap;gap:8px;
-      justify-content:space-between;align-items:center;
-      padding:10px;background:var(--hdr);border-bottom:2px solid var(--border);
-      position:sticky;top:0;z-index:1000;
-    }
-    .controls-left,.controls-right{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+*{box-sizing:border-box}
 
-    .btn{
-      background:var(--th);color:var(--tht);
-      border:1px solid var(--border);
-      padding:8px 12px;border-radius:8px;cursor:pointer;
-      font-size:.85rem;font-weight:700;
-    }
-    .btn.secondary{background:transparent;color:var(--text)}
-    .btn:disabled{opacity:.55;cursor:not-allowed}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:14px;
+}
 
-    .tabs{display:flex;justify-content:center;gap:10px;padding:12px 10px}
-    .tab-btn{
-      background:transparent;color:var(--text);
-      border:2px solid var(--border);
-      padding:10px 14px;border-radius:999px;
-      font-size:.95rem;font-weight:800;cursor:pointer;opacity:.55
-    }
-    .tab-btn.active{border-color:var(--text);opacity:1;background:var(--hdr)}
+/* ================= CONTROLS ================= */
+.controls-bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px;
+  background:var(--hdr);
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:0;
+  z-index:1000;
+}
 
-    .view-section{display:none;padding:0 10px 20px}
-    .view-section.active{display:block}
+.controls-left,
+.controls-right{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+}
 
-    .split-view{display:flex;flex-wrap:wrap;gap:12px}
-    .split-col{flex:1;min-width:340px}
+.btn{
+  background:var(--th);
+  color:var(--tht);
+  border:1px solid var(--border);
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:.75rem;
+  font-weight:600;
+}
 
-    h2{
-      text-align:center;margin:10px 0;
-      font-size:1.05rem;background:var(--hdr);
-      padding:8px;border:2px solid var(--border);border-radius:10px
-    }
+.btn.secondary{
+  background:transparent;
+  color:var(--text);
+}
 
-    .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+.btn:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
 
-    table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:.85rem;border:2px solid var(--border);background:var(--bg)}
-    th,td{padding:8px 6px;border:1px solid var(--border);text-align:center;white-space:nowrap}
-    th{
-      background:var(--th);color:var(--tht);
-      position:sticky;top:92px;z-index:900;
-      text-transform:uppercase
-    }
-    .flight-logo{height:16px;vertical-align:middle;margin-right:6px}
+/* ================= TABS ================= */
+.tabs{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  padding:10px 6px;
+}
 
-    .onTime{background:var(--green);color:#000!important}
-    .delay{background:var(--yellow);color:#000!important}
-    .heavyDelay{background:var(--red);color:#000!important}
-    .cancelled{background:var(--grey);color:#000!important}
+.tab-btn{
+  background:transparent;
+  color:var(--text);
+  border:1px solid var(--border);
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:.8rem;
+  font-weight:600;
+  cursor:pointer;
+  opacity:.6;
+}
 
-    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:.8rem;background:rgba(0,0,0,.03)}
-    [data-theme="dark"] .pill{background:rgba(255,255,255,.06)}
+.tab-btn.active{
+  opacity:1;
+  background:var(--hdr);
+}
 
-    .dot{width:9px;height:9px;border-radius:999px;display:inline-block;background:#999}
-    .dot.ok{background:#22c55e}
-    .dot.warn{background:#f59e0b}
-    .dot.bad{background:#ef4444}
+/* ================= LAYOUT ================= */
+.view-section{
+  display:none;
+  padding:0 6px 16px;
+}
+.view-section.active{
+  display:block;
+}
 
-    .hint{font-size:.78rem;opacity:.85;line-height:1.2}
+.split-view{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.split-col{
+  flex:1;
+  min-width:340px;
+}
 
-    @media(max-width:768px){
-      .split-col{min-width:100%}
-      th,td{font-size:.75rem;padding:6px 4px}
-      th{top:126px}
-    }
-  </style>
+/* ================= HEADINGS ================= */
+h2{
+  text-align:center;
+  margin:8px 0;
+  font-size:.95rem;
+  background:var(--hdr);
+  padding:6px;
+  border-radius:8px;
+}
+
+/* ================= TABLE ================= */
+.table-wrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  border-radius:8px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.78rem;
+  background:var(--bg);
+}
+
+th,td{
+  padding:6px 4px;
+  border-bottom:1px solid var(--border);
+  text-align:center;
+  white-space:nowrap;
+}
+
+/* Sticky header FIXED */
+thead th{
+  position:sticky;
+  top:0;
+  background:var(--th);
+  color:var(--tht);
+  z-index:5;
+}
+
+/* Status colors */
+.onTime{background:var(--green)}
+.delay{background:var(--yellow)}
+.heavyDelay{background:var(--red)}
+.cancelled{background:var(--grey)}
+
+.flight-logo{
+  height:14px;
+  vertical-align:middle;
+  margin-right:4px;
+}
+
+/* ================= STATUS PILL ================= */
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:4px 8px;
+  font-size:.7rem;
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#999;
+}
+.dot.ok{background:#22c55e}
+.dot.warn{background:#f59e0b}
+.dot.bad{background:#ef4444}
+
+.hint{
+  font-size:.7rem;
+  opacity:.8;
+  line-height:1.3;
+}
+
+/* ================= MOBILE IMPROVEMENTS ================= */
+@media(max-width:768px){
+
+  body{
+    font-size:13px;
+  }
+
+  .split-col{
+    min-width:100%;
+  }
+
+  .controls-bar{
+    gap:4px;
+    padding:6px;
+  }
+
+  .btn{
+    padding:5px 8px;
+    font-size:.7rem;
+  }
+
+  .tab-btn{
+    padding:5px 10px;
+    font-size:.75rem;
+  }
+
+  table{
+    font-size:.72rem;
+  }
+
+  th,td{
+    padding:5px 3px;
+  }
+
+  h2{
+    font-size:.85rem;
+  }
+}
+</style>
+
 </head>
 <body>
   <div class="controls-bar">
