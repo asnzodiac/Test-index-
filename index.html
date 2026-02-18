@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AIX Security – COK</title>
+<meta name="theme-color" content="#000000"/>
+<meta name="description" content="AIX Security Flight Dashboard – Cochin International Airport (COK)"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="AIX COK"/>
+<link rel="manifest" id="manifestLink" href="manifest.json"/>
+<style>
+/* ═══════════════════════════════════════════════════
+   CSS VARIABLES & BASE
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:#fff;
+  --text:#000;
+  --hdr:#eee;
+  --th:#333;
+  --tht:#fff;
+  --green:#c8f7c5;
+  --yellow:#fff3b0;
+  --red:#f7c5c5;
+  --grey:#e0e0e0;
+  --border:#ddd;
+  --card:#f9f9f9;
+  --btn:#333;
+  --btntxt:#fff;
+  --shadow:rgba(0,0,0,0.12);
+  --accent:#1a73e8;
+  --tag-bg:rgba(0,0,0,0.07);
+}
+[data-theme="dark"] {
+  --bg:#121212;
+  --text:#e8e8e8;
+  --hdr:#1f1f1f;
+  --th:#2c2c2c;
+  --tht:#fff;
+  --green:#1f4d2b;
+  --yellow:#5c4b00;
+  --red:#5c1f1f;
+  --grey:#333;
+  --border:#3a3a3a;
+  --card:#1e1e1e;
+  --btn:#555;
+  --btntxt:#fff;
+  --shadow:rgba(0,0,0,0.5);
+  --accent:#4da3ff;
+  --tag-bg:rgba(255,255,255,0.09);
+}
+
+/* ═══════════════════════════════════════════════════
+   RESET & BODY
+═══════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,Tahoma,Geneva,Verdana,sans-serif;
+  font-size:13px;
+  line-height:1.4;
+  transition:background 0.25s,color 0.25s;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ═══════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════ */
+header{
+  background:var(--th);
+  color:var(--tht);
+  padding:10px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:8px;
+  box-shadow:0 2px 8px var(--shadow);
+  position:sticky;
+  top:0;
+  z-index:200;
+}
+.header-left{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.header-logo{
+  font-size:22px;
+  line-height:1;
+}
+.header-title-text{
+  display:flex;
+  flex-direction:column;
+}
+.header-title-text .main-title{
+  font-size:17px;
+  font-weight:800;
+  letter-spacing:0.5px;
+  line-height:1.1;
+  color:#fff;
+}
+.header-title-text .sub-title{
+  font-size:10px;
+  opacity:0.75;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+.airport-badge{
+  background:#e74c3c;
+  color:#fff;
+  border-radius:5px;
+  padding:3px 9px;
+  font-size:14px;
+  font-weight:900;
+  letter-spacing:1px;
+  margin-left:2px;
+}
+.controls{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.btn{
+  background:var(--btn);
+  color:var(--btntxt);
+  border:none;
+  padding:7px 13px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:11.5px;
+  font-weight:700;
+  transition:opacity 0.15s,transform 0.15s,box-shadow 0.15s;
+  white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  letter-spacing:0.3px;
+}
+.btn:hover{opacity:0.82;transform:translateY(-1px);box-shadow:0 3px 8px var(--shadow);}
+.btn:active{transform:translateY(0);opacity:1;}
+.btn-primary{background:#1a73e8;}
+.btn-notify{background:#e67e22;}
+.btn-dark{background:#555;}
+.btn-notify.enabled{background:#27ae60;}
+
+/* ═══════════════════════════════════════════════════
+   STATUS BAR
+═══════════════════════════════════════════════════ */
+.status-bar{
+  background:var(--hdr);
+  padding:5px 16px;
+  font-size:11px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  color:var(--text);
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.live-dot{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-weight:700;
+  font-size:11px;
+}
+.dot{
+  display:inline-block;
+  width:8px;height:8px;
+  border-radius:50%;
+  background:#27ae60;
+  box-shadow:0 0 0 2px rgba(39,174,96,0.3);
+  animation:pulse 2s infinite;
+}
+.dot.loading{background:#f39c12;box-shadow:0 0 0 2px rgba(243,156,18,0.3);}
+.dot.error{background:#e74c3c;box-shadow:0 0 0 2px rgba(231,76,60,0.3);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.6;transform:scale(0.85);}}
+
+/* ═══════════════════════════════════════════════════
+   LEGEND
+═══════════════════════════════════════════════════ */
+.legend{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:7px 16px;
+  background:var(--hdr);
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+  font-size:11px;
+}
+.legend strong{margin-right:4px;}
+.legend-item{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+}
+.legend-swatch{
+  width:13px;height:13px;
+  border-radius:3px;
+  border:1px solid rgba(0,0,0,0.1);
+  flex-shrink:0;
+}
+[data-theme="dark"] .legend-swatch{border-color:rgba(255,255,255,0.1);}
+
+/* ═══════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════ */
+.tabs{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  padding:10px 16px;
+  background:var(--hdr);
+  border-bottom:2px solid var(--border);
+}
+.tab-btn{
+  background:var(--tag-bg);
+  color:var(--text);
+  border:2px solid transparent;
+  padding:9px 22px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:13.5px;
+  font-weight:700;
+  transition:all 0.2s;
+  letter-spacing:0.3px;
+  position:relative;
+}
+.tab-btn:hover{border-color:var(--accent);color:var(--accent);}
+.tab-btn.active{
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+  box-shadow:0 3px 12px rgba(26,115,232,0.35);
+}
+
+/* ═══════════════════════════════════════════════════
+   CONTENT
+═══════════════════════════════════════════════════ */
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+.section-header{
+  background:var(--hdr);
+  padding:9px 16px;
+  font-size:14px;
+  font-weight:800;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  letter-spacing:0.3px;
+}
+.section-sep{
+  border-top:3px solid var(--border);
+}
+.count-badge{
+  background:var(--accent);
+  color:#fff;
+  border-radius:12px;
+  padding:2px 9px;
+  font-size:11px;
+  font-weight:800;
+  min-width:24px;
+  text-align:center;
+}
+
+/* ═══════════════════════════════════════════════════
+   TABLES
+═══════════════════════════════════════════════════ */
+.table-wrap{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12.5px;
+  min-width:600px;
+}
+thead th{
+  background:var(--th);
+  color:var(--tht);
+  padding:9px 11px;
+  text-align:left;
+  font-weight:700;
+  position:sticky;
+  top:0;
+  z-index:10;
+  white-space:nowrap;
+  border-bottom:2px solid rgba(255,255,255,0.15);
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:0.7px;
+  user-select:none;
+}
+thead th:first-child{border-radius:0;}
+tbody tr{
+  border-bottom:1px solid var(--border);
+  transition:filter 0.15s,background 0.3s;
+}
+tbody tr:hover{filter:brightness(0.93);}
+[data-theme="dark"] tbody tr:hover{filter:brightness(1.12);}
+tbody td{
+  padding:7px 11px;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+
+/* Row classes */
+.onTime{background:var(--green);}
+.delay{background:var(--yellow);}
+.heavyDelay{background:var(--red);}
+.cancelled{background:var(--grey);}
+
+/* ═══════════════════════════════════════════════════
+   CELL CONTENT
+═══════════════════════════════════════════════════ */
+.logo-cell{
+  width:88px;
+  padding:5px 8px !important;
+}
+.logo-cell img{
+  height:26px;
+  max-width:82px;
+  object-fit:contain;
+  display:block;
+  border-radius:2px;
+}
+.logo-placeholder{
+  width:60px;height:22px;
+  background:var(--tag-bg);
+  border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;letter-spacing:0.5px;
+  color:var(--text);opacity:0.5;
+}
+.flight-num{
+  font-weight:800;
+  font-size:13px;
+  letter-spacing:0.8px;
+  color:var(--text);
+}
+.reg-code{
+  font-family:'Courier New',Courier,monospace;
+  color:var(--accent);
+  font-size:12px;
+  font-weight:700;
+}
+.route-cell{
+  font-size:12px;
+  max-width:160px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.time-cell{
+  font-family:'Courier New',Courier,monospace;
+  font-size:13px;
+  font-weight:700;
+}
+.time-est{display:block;font-size:12.5px;}
+.time-delay{
+  display:block;
+  font-size:10px;
+  color:#c0392b;
+  font-weight:800;
+  letter-spacing:0.3px;
+  margin-top:1px;
+}
+[data-theme="dark"] .time-delay{color:#ff7675;}
+.time-sch{
+  font-family:'Courier New',Courier,monospace;
+  font-size:12px;
+  opacity:0.65;
+}
+.ac-type{
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:0.3px;
+}
+.status-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.status-badge{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:10px;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+  background:var(--tag-bg);
+  white-space:nowrap;
+  border:1px solid rgba(0,0,0,0.06);
+}
+[data-theme="dark"] .status-badge{border-color:rgba(255,255,255,0.06);}
+.status-badge.landed,.status-badge.arrived{background:rgba(39,174,96,0.2);color:#1e8449;}
+.status-badge.airborne,.status-badge.enroute{background:rgba(26,115,232,0.15);color:#1a73e8;}
+.status-badge.scheduled{background:rgba(0,0,0,0.07);}
+.status-badge.delayed{background:rgba(230,126,34,0.2);color:#d35400;}
+.status-badge.cancelled{background:rgba(231,76,60,0.2);color:#c0392b;}
+[data-theme="dark"] .status-badge.landed,[data-theme="dark"] .status-badge.arrived{color:#6fcf97;}
+[data-theme="dark"] .status-badge.airborne,[data-theme="dark"] .status-badge.enroute{color:#64b5f6;}
+[data-theme="dark"] .status-badge.delayed{color:#f39c12;}
+[data-theme="dark"] .status-badge.cancelled{color:#ff6b6b;}
+
+.empty-row td{
+  text-align:center;
+  padding:32px 16px;
+  color:var(--text);
+  opacity:0.45;
+  font-size:13px;
+  font-style:italic;
+}
+.spinner{
+  display:inline-block;
+  width:18px;height:18px;
+  border:2.5px solid var(--border);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin 0.75s linear infinite;
+  vertical-align:middle;
+  margin-right:7px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ═══════════════════════════════════════════════════
+   TURNAROUND SPECIAL
+═══════════════════════════════════════════════════ */
+.ta-flights{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.ta-fn{
+  font-weight:800;
+  font-size:12.5px;
+  letter-spacing:0.5px;
+}
+.ta-fn-dep{
+  font-size:11px;
+  opacity:0.75;
+}
+.ta-time-pair{
+  font-family:'Courier New',Courier,monospace;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.6;
+}
+.ta-sep{
+  font-size:10px;
+  opacity:0.5;
+  display:block;
+}
+
+/* ═══════════════════════════════════════════════════
+   INSTALL BTN / TOAST
+═══════════════════════════════════════════════════ */
+#install-btn{
+  position:fixed;
+  bottom:22px;
+  right:22px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:12px 20px;
+  border-radius:50px;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:800;
+  box-shadow:0 4px 20px rgba(26,115,232,0.45);
+  display:none;
+  z-index:9999;
+  align-items:center;
+  gap:7px;
+  animation:slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  white-space:nowrap;
+}
+#install-btn:hover{background:#1558b0;transform:translateY(-2px);}
+@keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+#toast{
+  position:fixed;
+  bottom:80px;
+  right:22px;
+  background:rgba(30,30,30,0.95);
+  color:#fff;
+  padding:10px 16px;
+  border-radius:8px;
+  font-size:12.5px;
+  font-weight:600;
+  z-index:9998;
+  opacity:0;
+  transform:translateY(10px);
+  transition:opacity 0.25s,transform 0.25s;
+  max-width:300px;
+  pointer-events:none;
+  backdrop-filter:blur(4px);
+}
+#toast.show{opacity:1;transform:translateY(0);}
+[data-theme="dark"] #toast{background:rgba(240,240,240,0.95);color:#111;}
+
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════ */
+@media(max-width:680px){
+  header{flex-direction:column;align-items:flex-start;gap:7px;}
+  .controls{width:100%;justify-content:flex-start;}
+  .btn{font-size:10.5px;padding:6px 10px;}
+  .tab-btn{font-size:12px;padding:8px 14px;}
+  table{font-size:11.5px;min-width:480px;}
+  thead th{padding:7px 7px;font-size:9.5px;}
+  tbody td{padding:6px 7px;}
+  .logo-cell img{height:20px;max-width:60px;}
+  .flight-num{font-size:12px;}
+  .time-cell{font-size:12px;}
+}
+@media(max-width:400px){
+  .header-title-text .main-title{font-size:14px;}
+  .airport-badge{font-size:12px;padding:2px 7px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════ -->
+<header>
+  <div class="header-left">
+    <div class="header-logo">✈️</div>
+    <div class="header-title-text">
+      <span class="main-title">AIX Security <span class="airport-badge">COK</span></span>
+      <span class="sub-title">Cochin International Airport · Live Dashboard</span>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-primary" id="loadEarlierBtn" onclick="loadEarlier()">⏮ Load Earlier Flights</button>
+    <button class="btn btn-notify" id="notifyBtn" onclick="enableNotifications()">🔔 Enable Notifications</button>
+    <button class="btn btn-dark" id="darkBtn" onclick="toggleDark()">🌙 Dark Mode</button>
+  </div>
+</header>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <span class="live-dot"><span class="dot" id="liveDot"></span> LIVE</span>
+  <span id="lastUpdate">Initializing…</span>
+  <span id="flightSummary"></span>
+  <span id="refreshCountdown" style="margin-left:auto;font-size:10px;opacity:0.6;"></span>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <strong>Legend:</strong>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--green)"></span> On Time</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--yellow)"></span> Delay (1–44m)</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span> Heavy Delay (≥45m)</span>
+  <span class="legend-item"><span class="legend-swatch" style="background:var(--grey)"></span> Cancelled</span>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" id="tab-flights" onclick="switchTab('flights')">🛬 COK FLIGHTS 🛫</button>
+  <button class="tab-btn" id="tab-turnaround" onclick="switchTab('turnaround')">🔄 Turnaround Flights</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     FLIGHTS TAB
+════════════════════════════════════════════════ -->
+<div class="tab-content active" id="content-flights">
+
+  <!-- ARRIVALS -->
+  <div class="section-header">
+    🛬 Arrivals
+    <span class="count-badge" id="arrCount">0</span>
+  </div>
+  <div class="table-wrap">
+    <table id="arrTable">
+      <thead>
+        <tr>
+          <th style="width:90px">Airline</th>
+          <th>Flight</th>
+          <th>Reg</th>
+          <th>From</th>
+          <th>ETA</th>
+          <th>STA</th>
+          <th>Aircraft</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="arrBody">
+        <tr class="empty-row"><td colspan="8"><span class="spinner"></span>Loading arrivals…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DEPARTURES -->
+  <div class="section-header section-sep">
+    🛫 Departures
+    <span class="count-badge" id="depCount">0</span>
+  </div>
+  <div class="table-wrap">
+    <table id="depTable">
+      <thead>
+        <tr>
+          <th style="width:90px">Airline</th>
+          <th>Flight</th>
+          <th>Reg</th>
+          <th>To</th>
+          <th>ETD</th>
+          <th>STD</th>
+          <th>Aircraft</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="depBody">
+        <tr class="empty-row"><td colspan="8"><span class="spinner"></span>Loading departures…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /content-flights -->
+
+<!-- ═══════════════════════════════════════════════
+     TURNAROUND TAB
+════════════════════════════════════════════════ -->
+<div class="tab-content" id="content-turnaround">
+  <div class="section-header">
+    🔄 Turnaround Flights
+    <span class="count-badge" id="taCount">0</span>
+  </div>
+  <div class="table-wrap">
+    <table id="taTable">
+      <thead>
+        <tr>
+          <th style="width:90px">Airline</th>
+          <th>Flight</th>
+          <th>Reg</th>
+          <th>From</th>
+          <th>To</th>
+          <th>ETA / ETD</th>
+          <th>STA / STD</th>
+          <th>Aircraft</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="taBody">
+        <tr class="empty-row"><td colspan="9">No turnaround flights found yet. Data loads automatically.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div><!-- /content-turnaround -->
+
+<!-- INSTALL BUTTON -->
+<button id="install-btn" onclick="installApp()">📲 Install App</button>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────────────
+   PWA MANIFEST (inline blob)
+───────────────────────────────────────────────────── */
+(function injectManifest(){
+  const m = {
+    name:'AIX Security – COK',
+    short_name:'AIX COK',
+    description:'Real-time flight dashboard for Cochin International Airport',
+    start_url:'./',
+    display:'standalone',
+    background_color:'#000000',
+    theme_color:'#000000',
+    orientation:'any',
+    icons:[
+      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a73e8'/%3E%3Ctext y='.9em' font-size='72' text-anchor='middle' x='50'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E",sizes:'192x192',type:'image/svg+xml'},
+      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a73e8'/%3E%3Ctext y='.9em' font-size='72' text-anchor='middle' x='50'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E",sizes:'512x512',type:'image/svg+xml'}
+    ]
+  };
+  try{
+    const blob = new Blob([JSON.stringify(m)],{type:'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const link = document.getElementById('manifestLink');
+    if(link) link.href = url;
+  }catch(e){}
+})();
+
+/* ─────────────────────────────────────────────────────
+   SERVICE WORKER
+───────────────────────────────────────────────────── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js',{scope:'./'})
+    .then(()=>console.log('[SW] Registered'))
+    .catch(err=>{
+      // Fallback: blob SW
+      const swCode=`
+const C='aix-cok-v1';
+self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['/'])));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});
+self.addEventListener('fetch',e=>{if(e.request.url.includes('flightradar24')||e.request.url.includes('allorigins'))return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('/'))));});`;
+      try{
+        const b=new Blob([swCode],{type:'application/javascript'});
+        navigator.serviceWorker.register(URL.createObjectURL(b),{scope:'./'}).catch(()=>{});
+      }catch(e2){}
+    });
+}
+
+/* ─────────────────────────────────────────────────────
+   INSTALL PROMPT
+───────────────────────────────────────────────────── */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  const btn=document.getElementById('install-btn');
+  btn.style.display='inline-flex';
+});
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('install-btn').style.display='none';
+  deferredPrompt=null;
+});
+function installApp(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r=>{
+    deferredPrompt=null;
+    document.getElementById('install-btn').style.display='none';
+    if(r.outcome==='accepted') showToast('✅ App installed!');
+  });
+}
+
+/* ─────────────────────────────────────────────────────
+   CONSTANTS & CONFIG
+───────────────────────────────────────────────────── */
+const AIRPORT   = 'cok';
+const ALLOWED   = ['IX','AK','FD','J9','UL','FZ'];
+const BASE_API  = 'https://api.flightradar24.com/common/v1/airport.json';
+const PROXY_URL = 'https://api.allorigins.win/get?url=';
+const PROXY2    = 'https://corsproxy.io/?';
+const UA        = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const REFRESH_MS= 30000;
+
+/* ─────────────────────────────────────────────────────
+   DOMAIN MAP
+───────────────────────────────────────────────────── */
+const DOMAIN_MAP = {
+  'AI' :'airindia.com',
+  'IX' :'airindiaexpress.com',
+  '6E' :'goindigo.in',
+  'UK' :'airvistara.com',
+  'SG' :'spicejet.com',
+  'QP' :'akasaair.com',
+  '9I' :'allianceair.in',
+  'I5' :'airasia.co.in',
+  'EK' :'emirates.com',
+  'EY' :'etihad.com',
+  'QR' :'qatarairways.com',
+  'SV' :'saudia.com',
+  'KU' :'kuwaitairways.com',
+  'WY' :'omanair.com',
+  'GF' :'gulfair.com',
+  'J9' :'jazeeraairways.com',
+  'FZ' :'flydubai.com',
+  'G9' :'airarabia.com',
+  'NP' :'flyadeal.com',
+  'XY' :'flynas.com',
+  'UL' :'srilankan.com',
+  'SQ' :'singaporeair.com',
+  'TR' :'scoot.co',
+  'MH' :'malaysiaairlines.com',
+  'OD' :'batikair.com',
+  'TG' :'thaiairways.com',
+  'FD' :'airasia.com',
+  'AK' :'airasia.com',
+  'VN' :'vietnamairlines.com',
+  'VJ' :'vietjetair.com',
+  'BI' :'royalbrunei.com',
+  'CX' :'cathaypacific.com',
+  'JL' :'jal.com',
+  'NH' :'ana.co.jp',
+  'OZ' :'flyasiana.com',
+  'KE' :'koreanair.com',
+  'LH' :'lufthansa.com',
+  'LX' :'swiss.com',
+  'OS' :'austrian.com',
+  'AF' :'airfrance.com',
+  'KL' :'klm.com',
+  'BA' :'britishairways.com',
+  'VS' :'virginatlantic.com',
+  'AY' :'finnair.com',
+  'TK' :'turkishairlines.com',
+  'AZ' :'alitalia.com',
+  'IB' :'iberia.com',
+  'LO' :'lot.com',
+  'SK' :'flysas.com',
+  'UA' :'united.com',
+  'AA' :'aa.com',
+  'DL' :'delta.com',
+  'AC' :'aircanada.com',
+  'ET' :'ethiopianairlines.com',
+  'KQ' :'kenya-airways.com',
+  'MS' :'egyptair.com',
+  'PK' :'piac.com.pk',
+  'BG' :'biman-airlines.com',
+  'BS' :'bassaka-air.com',
+  '5X' :'ups.com',
+  'FX' :'fedex.com',
+  '7L' :'aeroflot.ru',
+  'CV' :'cargolux.com',
+  'CK' :'chinacargo.com',
+  'CI' :'china-airlines.com',
+};
+
+/* ─────────────────────────────────────────────────────
+   LOGO HELPER
+───────────────────────────────────────────────────── */
+function getPrefix(fn){
+  if(!fn) return '';
+  // Extract letters-only prefix (2 chars)
+  const m = fn.match(/^([A-Za-z0-9]{2})/);
+  if(!m) return '';
+  return m[1].toUpperCase();
+}
+
+function getLogo(fn){
+  const code = getPrefix(fn);
+  if(!code) return '';
+  // AirAsia special case
+  if(code==='AK'||code==='FD'){
+    return 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/AirAsia_New_Logo_%282020%29.svg/768px-AirAsia_New_Logo_%282020%29.svg.png';
+  }
+  const domain = DOMAIN_MAP[code];
+  if(!domain) return '';
+  const fmt = (code==='FZ') ? 'svg' : 'png';
+  return `https://cdn.brandfetch.io/${domain}/logo.${fmt}?w=400&h=120&c=1idBLQ1djCDndBUmUVs`;
+}
+
+/* ─────────────────────────────────────────────────────
+   TIME UTILITIES
+───────────────────────────────────────────────────── */
+function toTime(t){
+  if(!t && t!==0) return '–';
+  const d = new Date(Number(t)*1000);
+  return d.toLocaleTimeString('en-IN',{
+    hour  :'2-digit',
+    minute:'2-digit',
+    hour12:false,
+    timeZone:'Asia/Kolkata'
+  }).replace('24:','00:');
+}
+
+function delayMinutes(sch, est){
+  if(!sch||!est) return 0;
+  const d = Math.round((Number(est)-Number(sch))/60);
+  return d > 0 ? d : 0;
+}
+
+function rowClass(status, delay){
+  const s = (status||'').toLowerCase();
+  if(s.includes('cancel')) return 'cancelled';
+  if(delay >= 45) return 'heavyDelay';
+  if(delay >  0)  return 'delay';
+  return 'onTime';
+}
+
+function statusBadgeClass(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('land')||s.includes('arriv')) return 'landed';
+  if(s.includes('airborne')||s.includes('enroute')||s.includes('en route')) return 'airborne';
+  if(s.includes('cancel')) return 'cancelled';
+  if(s.includes('delay')) return 'delayed';
+  if(s.includes('depart')) return 'airborne';
+  return 'scheduled';
+}
+
+/* ─────────────────────────────────────────────────────
+   TIME WINDOW FILTER
+───────────────────────────────────────────────────── */
+function withinTimeWindow(sch, est, act){
+  const now = Date.now()/1000;
+  const refTime  = act || est || sch;
+  const schTime  = sch || refTime;
+  if(!schTime) return false;
+  // Show flights from 1h ago to 20h ahead
+  const past   = now - 3600;     // 1 hour ago
+  const future = now + 72000;    // 20 hours ahead
+  if(schTime < past - 7200) return false;  // way too old
+  if(schTime > future)      return false;  // too far future
+  // If already actual time is too far past, hide
+  if(refTime && refTime < past - 1800) return false;
+  return true;
+}
+
+/* ─────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────── */
+// Map: flightId -> {delay, status, fn, sch, est}
+const arrState = new Map();
+const depState = new Map();
+
+let baseTs        = Math.floor(Date.now()/1000);
+let earliestTs    = baseTs - 21600;
+let refreshTimer  = null;
+let countdownTimer= null;
+let nextRefreshIn = REFRESH_MS/1000;
+let isLoading     = false;
+
+/* ─────────────────────────────────────────────────────
+   CLEANUP OLD ROWS
+───────────────────────────────────────────────────── */
+function cleanupFlights(tbody, stateMap){
+  const now = Date.now()/1000;
+  const rows = tbody.querySelectorAll('tr[data-fid]');
+  rows.forEach(row=>{
+    const sch = parseInt(row.dataset.sch)||0;
+    const est = parseInt(row.dataset.est)||0;
+    const ref = est||sch;
+    if(ref && ref < now - 7200){
+      const fid = row.dataset.fid;
+      if(fid) stateMap.delete(fid);
+      row.remove();
+    }
+  });
+}
+
+/* ─────────────────────────────────────────────────────
+   SORT TABLE
+───────────────────────────────────────────────────── */
+function sortTableBody(tbody){
+  const rows = Array.from(tbody.querySelectorAll('tr[data-sch]'));
+  if(rows.length < 2) return;
+  rows.sort((a,b)=>(parseInt(a.dataset.sch)||0)-(parseInt(b.dataset.sch)||0));
+  const frag = document.createDocumentFragment();
+  rows.forEach(r=>frag.appendChild(r));
+  tbody.appendChild(frag);
+}
+
+/* ─────────────────────────────────────────────────────
+   FLIGHT ROW HTML BUILDER
+───────────────────────────────────────────────────── */
+function buildCells(fl, type){
+  const fn     = fl.identification?.number?.default || fl.identification?.callsign || '';
+  const reg    = fl.aircraft?.registration || '–';
+  const acText = fl.aircraft?.model?.text || '';
+  const acCode = fl.aircraft?.model?.code || '';
+  const ac     = acText || acCode || '–';
+  const status = fl.status?.text || 'Scheduled';
+
+  let sch, est, act;
+  if(type==='arrivals'){
+    sch = fl.time?.scheduled?.arrival;
+    est = fl.time?.estimated?.arrival;
+    act = fl.time?.real?.arrival;
+  } else {
+    sch = fl.time?.scheduled?.departure;
+    est = fl.time?.estimated?.departure;
+    act = fl.time?.real?.departure;
+  }
+  const displayTime = act || est || sch;
+  const delay = delayMinutes(sch, displayTime||sch);
+
+  let origin = '', dest = '';
+  const ap = fl.airport;
+  if(ap){
+    const orig = ap.origin;
+    const dst  = ap.destination;
+    origin = orig?.name || orig?.code?.iata || orig?.code?.icao || '';
+    dest   = dst?.name  || dst?.code?.iata  || dst?.code?.icao  || '';
+    // Clean up city names - remove "Airport" suffix for brevity
+    origin = origin.replace(/ (International|Int'l|Airport|Intl)\.?/gi,'').trim();
+    dest   = dest.replace(/ (International|Int'l|Airport|Intl)\.?/gi,'').trim();
+    // Use IATA code if name very long
+    if(origin.length>20 && orig?.code?.iata) origin = orig.code.iata;
+    if(dest.length>20   && dst?.code?.iata)  dest   = dst.code.iata;
+  }
+
+  const logoUrl = getLogo(fn);
+  const prefix  = getPrefix(fn);
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="${prefix}" loading="lazy" onerror="this.outerHTML='<span class=\\'logo-placeholder\\'>${prefix}</span>'">`
+    : `<span class="logo-placeholder">${prefix}</span>`;
+
+  const etStr  = toTime(displayTime);
+  const schStr = toTime(sch);
+  const delStr = delay>0 ? `<span class="time-delay">+${delay}m late</span>` : '';
+  const sbCls  = statusBadgeClass(status);
+
+  let cells;
+  if(type==='arrivals'){
+    cells = `
+<td class="logo-cell">${logoHtml}</td>
+<td class="flight-num">${fn}</td>
+<td class="reg-code">${reg}</td>
+<td class="route-cell" title="${origin}">${origin||'–'}</td>
+<td class="time-cell"><span class="time-est">${etStr}</span>${delStr}</td>
+<td class="time-sch">${schStr}</td>
+<td class="ac-type">${ac}</td>
+<td><span class="status-badge ${sbCls}">${status}</span></td>`;
+  } else {
+    cells = `
+<td class="logo-cell">${logoHtml}</td>
+<td class="flight-num">${fn}</td>
+<td class="reg-code">${reg}</td>
+<td class="route-cell" title="${dest}">${dest||'–'}</td>
+<td class="time-cell"><span class="time-est">${etStr}</span>${delStr}</td>
+<td class="time-sch">${schStr}</td>
+<td class="ac-type">${ac}</td>
+<td><span class="status-badge ${sbCls}">${status}</span></td>`;
+  }
+  return {fn, reg, sch, est, act, displayTime, delay, status, origin, dest, ac, cells};
+}
+
+/* ─────────────────────────────────────────────────────
+   FETCH WITH FALLBACK
+───────────────────────────────────────────────────── */
+async function fetchData(url){
+  // Try direct
+  try{
+    const r = await fetch(url, {
+      headers:{'User-Agent':UA,'Accept':'application/json, text/plain, */*'},
+      mode:'cors',
+      cache:'no-cache'
+    });
+    if(r.ok) return await r.json();
+  }catch(e){ console.warn('[fetch] direct failed:', e.message); }
+
+  // Fallback: allorigins proxy
+  try{
+    const pUrl = PROXY_URL + encodeURIComponent(url);
+    const r = await fetch(pUrl,{cache:'no-cache'});
+    if(r.ok){
+      const j = await r.json();
+      if(j.contents) return JSON.parse(j.contents);
+    }
+  }catch(e){ console.warn('[fetch] allorigins failed:', e.message); }
+
+  // Fallback: corsproxy.io
+  try{
+    const pUrl = PROXY2 + encodeURIComponent(url);
+    const r = await fetch(pUrl,{cache:'no-cache'});
+    if(r.ok) return await r.json();
+  }catch(e){ console.warn('[fetch] corsproxy failed:', e.message); }
+
+  return null;
+}
+
+/* ─────────────────────────────────────────────────────
+   LOAD FLIGHTS (core)
+───────────────────────────────────────────────────── */
+async function loadFlights(type, timestamp){
+  const mode = type==='arrivals' ? 'arrivals' : 'departures';
+  const url  = `${BASE_API}?code=${AIRPORT}&plugin-setting[schedule][mode]=${mode}&plugin-setting[schedule][timestamp]=${timestamp}&limit=100&plugin[]=schedule&page=1`;
+
+  setLiveDot('loading');
+  const data = await fetchData(url);
+  if(!data){ setLiveDot('error'); return 0; }
+
+  const schedule = data?.result?.response?.airport?.pluginData?.schedule;
+  if(!schedule){ setLiveDot('error'); return 0; }
+
+  const items = (type==='arrivals'
+    ? schedule.arrivals?.data
+    : schedule.departures?.data) || [];
+
+  const tbody    = document.getElementById(type==='arrivals' ? 'arrBody' : 'depBody');
+  const stateMap = type==='arrivals' ? arrState : depState;
+
+  // Remove loading placeholder
+  const ph = tbody.querySelector('.empty-row');
+  if(ph && ph.textContent.includes('Loading')) ph.remove();
+
+  let added = 0;
+
+  for(const item of items){
+    const fl = item.flight || item;
+
+    const fn     = fl.identification?.number?.default || fl.identification?.callsign || '';
+    if(!fn) continue;
+
+    // Check allowed prefix
+    const code = getPrefix(fn);
+    if(!ALLOWED.includes(code)) continue;
+
+    // Times
+    let sch, est, act;
+    if(type==='arrivals'){
+      sch = fl.time?.scheduled?.arrival;
+      est = fl.time?.estimated?.arrival;
+      act = fl.time?.real?.arrival;
+    } else {
+      sch = fl.time?.scheduled?.departure;
+      est = fl.time?.estimated?.departure;
+      act = fl.time?.real?.departure;
+    }
+
+    if(!withinTimeWindow(sch, est, act)) continue;
+
+    const fid    = fl.identification?.id || (fn+'_'+sch);
+    const displayTime = act||est||sch;
+    const delay  = delayMinutes(sch, displayTime||sch);
+    const status = fl.status?.text || 'Scheduled';
+    const cls    = rowClass(status, delay);
+
+    // Notifications
+    const prev = stateMap.get(fid);
+    if(prev){
+      if(delay > prev.delay && delay > 0){
+        const diff = delay - prev.delay;
+        sendNotification(`✈ ${fn}: Delay increased`,`Delay increased by ${diff} min (now +${delay}m)`);
+      } else if(prev.delay===0 && delay>0){
+        sendNotification(`✈ ${fn}: New delay`,`Delayed by ${delay} minute${delay!==1?'s':''}`);
+      }
+    }
+    stateMap.set(fid, {delay, status, fn, sch, est:displayTime});
+
+    // Build cells
+    const built = buildCells(fl, type);
+
+    // Check for existing row
+    let tr = tbody.querySelector(`tr[data-fid="${CSS.escape(fid)}"]`);
+    if(tr){
+      tr.className = cls;
+      tr.dataset.sch = sch||'';
+      tr.dataset.est = displayTime||'';
+      tr.innerHTML   = built.cells;
+    } else {
+      tr = document.createElement('tr');
+      tr.className   = cls;
+      tr.dataset.fid = fid;
+      tr.dataset.sch = sch||'';
+      tr.dataset.est = displayTime||'';
+      tr.innerHTML   = built.cells;
+      tbody.appendChild(tr);
+      added++;
+    }
+  }
+
+  cleanupFlights(tbody, stateMap);
+  sortTableBody(tbody);
+
+  const total = tbody.querySelectorAll('tr[data-fid]').length;
+  if(total===0){
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No ${type} found for permitted airlines (IX, AK, FD, J9, UL, FZ).</td></tr>`;
+  }
+
+  setLiveDot('live');
+  updateCounts();
+  updateLastUpdate();
+  return total;
+}
+
+/* ─────────────────────────────────────────────────────
+   LOAD EARLIER
+───────────────────────────────────────────────────── */
+function loadEarlier(){
+  earliestTs -= 21600;
+  showToast('⏮ Loading earlier flights…');
+  loadFlights('arrivals',  earliestTs);
+  loadFlights('departures', earliestTs);
+}
+
+/* ─────────────────────────────────────────────────────
+   LOAD INITIAL WINDOW  (baseTs-6h → baseTs+24h in 6h steps)
+───────────────────────────────────────────────────── */
+async function loadInitialWindow(){
+  const now = Math.floor(Date.now()/1000);
+  baseTs     = now;
+  earliestTs = now - 21600;
+
+  const steps = [];
+  for(let t = now-21600; t <= now+86400; t+=21600) steps.push(t);
+
+  for(const ts of steps){
+    await Promise.all([
+      loadFlights('arrivals',   ts),
+      loadFlights('departures', ts)
+    ]);
+  }
+  buildTurnarounds();
+}
+
+/* ─────────────────────────────────────────────────────
+   AUTO REFRESH
+───────────────────────────────────────────────────── */
+async function refresh(){
+  if(isLoading) return;
+  isLoading = true;
+  const now = Math.floor(Date.now()/1000);
+  await Promise.all([
+    loadFlights('arrivals',   now),
+    loadFlights('departures', now)
+  ]);
+  buildTurnarounds();
+  isLoading = false;
+  nextRefreshIn = REFRESH_MS/1000;
+}
+
+function startRefreshTimer(){
+  refreshTimer  = setInterval(refresh, REFRESH_MS);
+  countdownTimer= setInterval(()=>{
+    nextRefreshIn = Math.max(0, nextRefreshIn-1);
+    const el = document.getElementById('refreshCountdown');
+    if(el) el.textContent = `Next refresh in ${nextRefreshIn}s`;
+    if(nextRefreshIn<=0) nextRefreshIn = REFRESH_MS/1000;
+  },1000);
+}
+
+/* ─────────────────────────────────────────────────────
+   TURNAROUNDS
+───────────────────────────────────────────────────── */
+function buildTurnarounds(){
+  const taBody  = document.getElementById('taBody');
+  const arrRows = Array.from(document.querySelectorAll('#arrBody tr[data-fid]'));
+  const depRows = Array.from(document.querySelectorAll('#depBody tr[data-fid]'));
+
+  if(arrRows.length===0||depRows.length===0){
+    taBody.innerHTML='<tr class="empty-row"><td colspan="9">No turnaround matches yet. Check back after arrivals and departures load.</td></tr>';
+    document.getElementById('taCount').textContent='0';
+    return;
+  }
+
+  const pairs = [];
+  const usedDep = new Set();
+
+  for(const arrRow of arrRows){
+    const arrReg = arrRow.querySelector('.reg-code')?.textContent?.trim();
+    if(!arrReg || arrReg==='–') continue;
+    const arrEst = parseInt(arrRow.dataset.est)||parseInt(arrRow.dataset.sch)||0;
+    if(!arrEst) continue;
+
+    let bestDep = null, bestDiff = Infinity;
+
+    for(const depRow of depRows){
+      if(usedDep.has(depRow)) continue;
+      const depReg = depRow.querySelector('.reg-code')?.textContent?.trim();
+      if(depReg!==arrReg) continue;
+      const depEst = parseInt(depRow.dataset.est)||parseInt(depRow.dataset.sch)||0;
+      if(!depEst) continue;
+      const diff = depEst - arrEst;
+      if(diff <= 0 || diff > 9000) continue;   // must be after arr, within 2.5h
+      if(diff < bestDiff){ bestDiff=diff; bestDep=depRow; }
+    }
+
+    if(bestDep){
+      usedDep.add(bestDep);
+      pairs.push({arrRow, depRow:bestDep, arrReg});
+    }
+  }
+
+  if(pairs.length===0){
+    taBody.innerHTML='<tr class="empty-row"><td colspan="9">No turnaround flights found (same registration, dep within 2.5h of arr).</td></tr>';
+    document.getElementById('taCount').textContent='0';
+    return;
+  }
+
+  // Sort by arr time
+  pairs.sort((a,b)=>(parseInt(a.arrRow.dataset.sch)||0)-(parseInt(b.arrRow.dataset.sch)||0));
+
+  const frag = document.createDocumentFragment();
+
+  for(const {arrRow, depRow, arrReg} of pairs){
+    const arrTds  = arrRow.querySelectorAll('td');
+    const depTds  = depRow.querySelectorAll('td');
+
+    const arrFn   = arrRow.querySelector('.flight-num')?.textContent?.trim()||'';
+    const depFn   = depRow.querySelector('.flight-num')?.textContent?.trim()||'';
+    const from    = arrTds[3]?.textContent?.trim()||'–';
+    const to      = depTds[3]?.textContent?.trim()||'–';
+    const arrEta  = arrTds[4]?.querySelector('.time-est')?.textContent?.trim() || arrTds[4]?.textContent?.trim()||'–';
+    const depEtd  = depTds[4]?.querySelector('.time-est')?.textContent?.trim() || depTds[4]?.textContent?.trim()||'–';
+    const arrSta  = arrTds[5]?.textContent?.trim()||'–';
+    const depStd  = depTds[5]?.textContent?.trim()||'–';
+    const ac      = arrTds[6]?.textContent?.trim()||depTds[6]?.textContent?.trim()||'–';
+    const arrStat = arrTds[7]?.querySelector('.status-badge')?.textContent?.trim()||'';
+    const depStat = depTds[7]?.querySelector('.status-badge')?.textContent?.trim()||'';
+
+    const arrCls  = arrRow.className;
+    const depCls  = depRow.className;
+    const cls     =
+      (arrCls==='cancelled'||depCls==='cancelled') ? 'cancelled' :
+      (arrCls==='heavyDelay'||depCls==='heavyDelay') ? 'heavyDelay' :
+      (arrCls==='delay'||depCls==='delay') ? 'delay' : 'onTime';
+
+    const logo    = getLogo(arrFn||depFn);
+    const prefix  = getPrefix(arrFn||depFn);
+    const logoHtml= logo
+      ? `<img src="${logo}" alt="${prefix}" loading="lazy" onerror="this.outerHTML='<span class=\\'logo-placeholder\\'>${prefix}</span>'">`
+      : `<span class="logo-placeholder">${prefix}</span>`;
+
+    const arrSbCls = statusBadgeClass(arrStat);
+    const depSbCls = statusBadgeClass(depStat);
+
+    const tr = document.createElement('tr');
+    tr.className = cls;
+    tr.innerHTML = `
+<td class="logo-cell">${logoHtml}</td>
+<td><div class="ta-flights"><span class="ta-fn">${arrFn}</span><span class="ta-fn-dep">↳ ${depFn}</span></div></td>
+<td class="reg-code">${arrReg}</td>
+<td class="route-cell">${from}</td>
+<td class="route-cell">${to}</td>
+<td class="ta-time-pair">${arrEta}<span class="ta-sep">──</span>${depEtd}</td>
+<td class="ta-time-pair" style="opacity:0.7">${arrSta}<span class="ta-sep">──</span>${depStd}</td>
+<td class="ac-type">${ac}</td>
+<td>
+  <div class="status-wrap">
+    <span class="status-badge ${arrSbCls}">${arrStat||'–'}</span>
+    <span class="status-badge ${depSbCls}">${depStat||'–'}</span>
+  </div>
+</td>`;
+    frag.appendChild(tr);
+  }
+
+  taBody.innerHTML='';
+  taBody.appendChild(frag);
+  document.getElementById('taCount').textContent = pairs.length;
+}
+
+/* ─────────────────────────────────────────────────────
+   UI HELPERS
+───────────────────────────────────────────────────── */
+function updateCounts(){
+  const arr = document.querySelectorAll('#arrBody tr[data-fid]').length;
+  const dep = document.querySelectorAll('#depBody tr[data-fid]').length;
+  document.getElementById('arrCount').textContent = arr;
+  document.getElementById('depCount').textContent = dep;
+  const el = document.getElementById('flightSummary');
+  if(el) el.textContent = `🛬 ${arr} arrivals · 🛫 ${dep} departures`;
+}
+
+function updateLastUpdate(){
+  const el = document.getElementById('lastUpdate');
+  if(!el) return;
+  const now = new Date();
+  el.textContent = 'Updated: ' + now.toLocaleTimeString('en-IN',{
+    timeZone:'Asia/Kolkata',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
+  }) + ' IST';
+}
+
+function setLiveDot(state){
+  const dot = document.getElementById('liveDot');
+  if(!dot) return;
+  dot.className = 'dot ' + (state==='live'?'':state);
+}
+
+/* ─────────────────────────────────────────────────────
+   NOTIFICATIONS
+───────────────────────────────────────────────────── */
+function enableNotifications(){
+  if(!('Notification' in window)){
+    showToast('❌ Notifications not supported in this browser.');
+    return;
+  }
+  if(Notification.permission==='granted'){
+    showToast('🔔 Notifications already enabled!');
+    return;
+  }
+  Notification.requestPermission().then(perm=>{
+    const btn = document.getElementById('notifyBtn');
+    if(perm==='granted'){
+      showToast('✅ Notifications enabled!');
+      btn.textContent='🔔 Notifications On';
+      btn.classList.add('enabled');
+      new Notification('AIX Security – COK',{
+        body:'You will now receive flight delay alerts.',
+        icon:''
+      });
+    } else {
+      showToast('⚠️ Notification permission denied.');
+    }
+  });
+}
+
+function sendNotification(title, body){
+  if(typeof Notification==='undefined') return;
+  if(Notification.permission!=='granted') return;
+  try{ new Notification(title,{body, icon:'', tag:title}); }catch(e){}
+}
+
+/* ─────────────────────────────────────────────────────
+   DARK MODE
+───────────────────────────────────────────────────── */
+function toggleDark(){
+  const html = document.documentElement;
+  const isDark = html.dataset.theme==='dark';
+  if(isDark){
+    delete html.dataset.theme;
+    localStorage.removeItem('aix-theme');
+    document.getElementById('darkBtn').textContent='🌙 Dark Mode';
+  } else {
+    html.dataset.theme='dark';
+    localStorage.setItem('aix-theme','dark');
+    document.getElementById('darkBtn').textContent='☀️ Light Mode';
+  }
+}
+
+// Restore theme
+(function(){
+  if(localStorage.getItem('aix-theme')==='dark'){
+    document.documentElement.dataset.theme='dark';
+    const btn=document.getElementById('darkBtn');
+    if(btn) btn.textContent='☀️ Light Mode';
+  }
+})();
+
+// System dark mode detection
+if(!localStorage.getItem('aix-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches){
+  document.documentElement.dataset.theme='dark';
+  const btn=document.getElementById('darkBtn');
+  if(btn) btn.textContent='☀️ Light Mode';
+}
+
+/* ─────────────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────────────── */
+let toastTm;
+function showToast(msg, dur=3500){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTm);
+  toastTm=setTimeout(()=>t.classList.remove('show'), dur);
+}
+
+/* ─────────────────────────────────────────────────────
+   TAB SWITCHING
+───────────────────────────────────────────────────── */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('content-'+tab).classList.add('active');
+  if(tab==='turnaround') buildTurnarounds();
+}
+
+/* ─────────────────────────────────────────────────────
+   DEMO DATA (when API is unavailable)
+───────────────────────────────────────────────────── */
+function injectDemoData(){
+  const now = Math.floor(Date.now()/1000);
+  const demoArrivals = [
+    {fn:'IX184',reg:'VT-IXB',from:'Dubai (DXB)',eta:now+1200,sta:now+900,ac:'B738',status:'En Route',delay:5},
+    {fn:'IX361',reg:'VT-IXD',from:'Abu Dhabi (AUH)',eta:now+2700,sta:now+2700,ac:'A320',status:'Scheduled',delay:0},
+    {fn:'FZ4302',reg:'A6-FEZ',from:'Dubai (DXB)',eta:now+4800,sta:now+3600,ac:'B738',status:'Delayed',delay:20},
+    {fn:'J9451',reg:'9K-AKA',from:'Kuwait (KWI)',eta:now+600,sta:now-1200,ac:'A320',status:'Landed',delay:0},
+    {fn:'UL227',reg:'4R-ABA',from:'Colombo (CMB)',eta:now+7200,sta:now+7200,ac:'A320',status:'Scheduled',delay:0},
+    {fn:'AK088',reg:'9M-AHB',from:'Kuala Lumpur (KUL)',eta:now+10800,sta:now+10800,ac:'A320',status:'Scheduled',delay:0},
+  ];
+  const demoDepartures = [
+    {fn:'IX185',reg:'VT-IXB',to:'Dubai (DXB)',etd:now+5400,std:now+3600,ac:'B738',status:'Scheduled',delay:30},
+    {fn:'IX362',reg:'VT-IXD',to:'Abu Dhabi (AUH)',etd:now+7200,std:now+7200,ac:'A320',status:'Scheduled',delay:0},
+    {fn:'FZ4303',reg:'A6-FEZ',to:'Dubai (DXB)',etd:now+9000,std:now+7200,ac:'B738',status:'Delayed',delay:30},
+    {fn:'J9452',reg:'9K-AKA',to:'Kuwait (KWI)',etd:now+3600,std:now+3600,ac:'A320',status:'Check-in',delay:0},
+    {fn:'UL228',reg:'4R-ABA',to:'Colombo (CMB)',etd:now+14400,std:now+14400,ac:'A320',status:'Scheduled',delay:0},
+    {fn:'AK089',reg:'9M-AHB',to:'Kuala Lumpur (KUL)',etd:now+16200,std:now+14400,ac:'A320',status:'Delayed',delay:30},
+  ];
+
+  function injectRows(arr, tbody, type){
+    arr.forEach(d=>{
+      const sch  = type==='arrivals'?d.sta:d.std;
+      const est  = type==='arrivals'?d.eta:d.etd;
+      const delay= delayMinutes(sch,est);
+      const cls  = rowClass(d.status, delay);
+      const fn   = d.fn;
+      const logo = getLogo(fn);
+      const prefix= getPrefix(fn);
+      const logoHtml = logo
+        ? `<img src="${logo}" alt="${prefix}" loading="lazy" onerror="this.outerHTML='<span class=\\'logo-placeholder\\'>${prefix}</span>'">`
+        : `<span class="logo-placeholder">${prefix}</span>`;
+      const delStr = delay>0?`<span class="time-delay">+${delay}m late</span>`:'';
+      const sbCls  = statusBadgeClass(d.status);
+      const fid    = fn+'_'+sch;
+      const tr = document.createElement('tr');
+      tr.className=cls;
+      tr.dataset.fid=fid;
+      tr.dataset.sch=sch||'';
+      tr.dataset.est=est||'';
+      if(type==='arrivals'){
+        tr.innerHTML=`
+<td class="logo-cell">${logoHtml}</td>
+<td class="flight-num">${fn}</td>
+<td class="reg-code">${d.reg}</td>
+<td class="route-cell">${d.from}</td>
+<td class="time-cell"><span class="time-est">${toTime(est)}</span>${delStr}</td>
+<td class="time-sch">${toTime(sch)}</td>
+<td class="ac-type">${d.ac}</td>
+<td><span class="status-badge ${sbCls}">${d.status}</span></td>`;
+      } else {
+        tr.innerHTML=`
+<td class="logo-cell">${logoHtml}</td>
+<td class="flight-num">${fn}</td>
+<td class="reg-code">${d.reg}</td>
+<td class="route-cell">${d.to}</td>
+<td class="time-cell"><span class="time-est">${toTime(est)}</span>${delStr}</td>
+<td class="time-sch">${toTime(sch)}</td>
+<td class="ac-type">${d.ac}</td>
+<td><span class="status-badge ${sbCls}">${d.status}</span></td>`;
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  const arrBody = document.getElementById('arrBody');
+  const depBody = document.getElementById('depBody');
+  arrBody.innerHTML='';
+  depBody.innerHTML='';
+  injectRows(demoArrivals,  arrBody, 'arrivals');
+  injectRows(demoDepartures,depBody, 'departures');
+  updateCounts();
+  updateLastUpdate();
+  setLiveDot('live');
+  buildTurnarounds();
+  showToast('ℹ️ Showing demo data (API unavailable in this environment)');
+}
+
+/* ─────────────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────────────── */
+(async function init(){
+  console.log('[AIX COK] Initializing…');
+  showToast('🔄 Loading flight data…');
+
+  try{
+    await loadInitialWindow();
+    const arrCount = document.querySelectorAll('#arrBody tr[data-fid]').length;
+    const depCount = document.querySelectorAll('#depBody tr[data-fid]').length;
+    if(arrCount===0 && depCount===0){
+      console.warn('[AIX COK] No real data retrieved, injecting demo data');
+      injectDemoData();
+    } else {
+      showToast(`✅ Loaded ${arrCount} arrivals · ${depCount} departures`);
+    }
+  } catch(e){
+    console.error('[AIX COK] Init error:', e);
+    injectDemoData();
+  }
+
+  startRefreshTimer();
+  console.log('[AIX COK] Dashboard live. Auto-refresh every 30s.');
+})();
+</script>
+</body>
+</html>
