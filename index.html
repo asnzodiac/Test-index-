@@ -179,7 +179,7 @@ const AIRPORT = "bom";
 const BRANDFETCH_CLIENT_ID = "1idBLQ1djCDndBUmUVs";
 const baseUrl = `https://api.flightradar24.com/common/v1/airport.json?code=${AIRPORT}`;
 
-const ALLOWED_AIRLINES = ["IX", "UL", "J9", "VZ", "UR", "3U", "7L"];
+const ALLOWED_AIRLINES = ["IX", "WY", "UL", "J9", "VZ", "UR", "3U", "7L"];
 
 let proxyMode = localStorage.getItem('bom_proxy_mode') || 'auto';
 const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
@@ -202,6 +202,7 @@ const getLogo = fn => {
   let domain = "";
   if (fn.startsWith("IX")) domain = "airindiaexpress.com";
   if (fn.startsWith("UL")) domain = "srilankan.com";
+  if (fn.startsWith("WY")) domain = "omanair.com";
   if (fn.startsWith("J9")) domain = "jazeeraairways.com";
   if (fn.startsWith("VZ") || fn.startsWith("VJ")) domain = "vietjetair.com";
   if (fn.startsWith("UR")) domain = "ugandaairlines.com";
